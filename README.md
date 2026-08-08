@@ -223,3 +223,80 @@ Device/GPS Tracker --(MQTT publish)--> Mosquitto Broker
 4. **Fase 4 — Integrasi LBS**: hubungkan pipeline real-time end-to-end, uji skala & latensi, finalisasi trail history.
 
 Setiap fase disarankan diakhiri dengan checkpoint pengujian (unit test backend, integration test API, manual test UI) sebelum lanjut ke fase berikutnya.
+
+---
+
+## 8. Step-by-Step Implementasi
+
+Checklist eksekusi konkret, urut, dan dapat langsung dikerjakan. Centang tiap item sebagai progress tracker.
+
+### 8.1 Fase 1 — Arsitektur Sistem & Database
+
+- [ ] Inisialisasi repo: pisahkan folder `backend/`, `frontend/`, `infra/` (docker-compose, init-sql).
+- [ ] Tulis `infra/docker-compose.yml` dengan service: `postgis` (image `postgis/postgis`), `geoserver` (image `kartoza/geoserver`), `redis`, `mosquitto`.
+- [ ] Jalankan `docker compose up -d` dan pastikan tiap service healthy (`docker compose ps`).
+- [ ] Buat database & aktifkan extension: `CREATE EXTENSION postgis;`
+- [ ] Buat migration file (mis. pakai Prisma/TypeORM/Alembic) untuk tabel `layers`, `spatial_features`, `devices`, `tracking_history` sesuai skema di bagian 3.2.
+- [ ] Jalankan migration, verifikasi index `GIST` terbentuk (`\d spatial_features` di psql).
+- [ ] Login GeoServer admin, buat **Workspace** baru (mis. `lbs_ws`).
+- [ ] Buat **Store** PostGIS di GeoServer yang connect ke database `postgis` container.
+- [ ] Publish 1 layer uji dari tabel `spatial_features` untuk memastikan koneksi PostGIS ↔ GeoServer berhasil (cek preview WMS di GeoServer).
+- [ ] Seed data dummy (beberapa baris `spatial_features` + 1 `device`) untuk keperluan testing fase berikutnya.
+- [ ] **Checkpoint**: query `ST_AsGeoJSON` langsung di psql mengembalikan GeoJSON valid.
+
+### 8.2 Fase 2 — Pengembangan Backend
+
+- [ ] Inisialisasi project backend (`NestJS` atau `FastAPI`), setup koneksi ke PostGIS (ORM/driver spasial: `TypeORM`+`postgis` atau `GeoAlchemy2`).
+- [ ] Implementasi `GET /layers/:id/features` → return GeoJSON `FeatureCollection` (gunakan `ST_AsGeoJSON` + bbox filter opsional).
+- [ ] Implementasi `POST /layers/:id/features` → terima GeoJSON geometry, validasi `ST_IsValid`, insert.
+- [ ] Implementasi `PUT /features/:id` dan `DELETE /features/:id` untuk mendukung editing/hapus geometri.
+- [ ] Setup validasi input (schema GeoJSON) & error handling standar (400/404/422).
+- [ ] Install **GDAL/OGR** di environment backend (via Docker image `osgeo/gdal` atau binary sistem) — verifikasi `ogr2ogr --version` jalan.
+- [ ] Implementasi `POST /features/upload`: terima file (multipart), deteksi ekstensi (.geojson/.zip berisi .shp/.kml), jalankan `ogr2ogr -f GeoJSON` sebagai child-process, parse hasil, insert ke `spatial_features`.
+- [ ] Uji upload dengan 3 sample file: GeoJSON, SHP (zip), KML — pastikan geometri & attribute tersimpan benar dan CRS ter-reproject ke 4326.
+- [ ] Implementasi `GET /layers/:id/export?format=geojson|shp|kml`: query data, jalankan `ogr2ogr` arah sebaliknya, kirim file (zip untuk SHP).
+- [ ] Setup **Mosquitto** topic subscriber di backend (`devices/+/position`), tulis handler yang update `devices.last_position` + insert `tracking_history`.
+- [ ] Setup **Redis Pub/Sub**: publish posisi baru ke channel `tracking:{device_id}` setelah insert berhasil.
+- [ ] Setup **WebSocket Gateway** (Socket.IO): client join room per `device_id`/area, gateway subscribe Redis dan forward event ke room terkait.
+- [ ] Tulis script simulator device (Node/Python) yang publish posisi dummy ke MQTT tiap 1–2 detik, untuk testing pipeline real-time tanpa hardware.
+- [ ] Implementasi `GET /search?q=` (query JSONB attributes + opsional proxy ke Nominatim).
+- [ ] Dokumentasikan seluruh endpoint di Swagger/OpenAPI.
+- [ ] **Checkpoint**: jalankan simulator, buka WebSocket client (Postman/websocat), pastikan event posisi diterima real-time; test upload/export ketiga format via Postman.
+
+### 8.3 Fase 3 — Pengembangan Frontend
+
+- [ ] Inisialisasi project (`npm create vite@latest` React+TS), install `ol`, `zustand`, `tailwindcss`, `axios`/`socket.io-client`.
+- [ ] Buat komponen `MapView` dasar: inisialisasi `ol/Map` + `ol/View`, tambahkan basemap Google Satellite via `XYZ` source.
+- [ ] Buat komponen `LayerControlPanel`: fetch daftar layer dari backend, render checkbox + opacity slider, hubungkan ke `layer.setVisible()`/`setOpacity()`.
+- [ ] Integrasikan layer data dari GeoServer (WMS/WFS `ol/source/TileWMS` atau `ol/source/Vector` + `ol/format/GeoJSON` via REST API backend).
+- [ ] Implementasi toolbar **Draw**: tombol Point/Line/Polygon → aktifkan `ol/interaction/Draw`, on `drawend` kirim geometry ke `POST /features`.
+- [ ] Implementasi mode **Edit**: aktifkan `ol/interaction/Select` + `Modify` + `Snap`, on `modifyend` kirim update ke `PUT /features/:id`.
+- [ ] Tambahkan tombol Save/Cancel/Delete pada toolbar geometri, sinkronkan dengan state Zustand.
+- [ ] Implementasi **popup**: buat `ol/Overlay`, handler `map.on('click')` + `forEachFeatureAtPixel`, render komponen React `FeaturePopup` menampilkan `attributes` sebagai tabel.
+- [ ] Implementasi **pengukuran**: toolbar Measure Distance/Area menggunakan `Draw` + `ol/sphere getLength/getArea`, tampilkan hasil sebagai tooltip mengikuti kursor.
+- [ ] Implementasi **search bar**: input dengan debounce (300ms), panggil `GET /search`, render dropdown hasil, klik hasil → `view.animate()` ke lokasi & highlight fitur.
+- [ ] Implementasi **upload UI**: drag-drop/file picker (terima .geojson/.zip/.kml), progress indicator, panggil `POST /features/upload`, refresh layer setelah sukses.
+- [ ] Implementasi **export UI**: dropdown pilih layer + format (GeoJSON/SHP/KML), tombol download memanggil `GET /export`.
+- [ ] Implementasi **print map**: tombol Print → capture kanvas peta (`ol-ext` print control atau `html2canvas`) + legend/scale bar, generate PDF (`jsPDF`).
+- [ ] Styling responsif seluruh panel (Tailwind), uji di ukuran layar desktop & tablet.
+- [ ] **Checkpoint**: seluruh interaksi (draw, edit, popup, ukur, search, upload, export, print) diuji manual end-to-end di browser.
+
+### 8.4 Fase 4 — Integrasi LBS (Real-Time Tracking)
+
+- [ ] Buat layer khusus "Live Tracking" di `LayerControlPanel` yang saat diaktifkan melakukan koneksi WebSocket (`socket.io-client`).
+- [ ] Render posisi device awal (`devices.last_position`) sebagai `Feature` di `ol/source/Vector` terpisah dari layer statis.
+- [ ] Implementasi handler event WebSocket: update koordinat `Feature` in-place (bukan re-create layer) setiap ada event posisi baru.
+- [ ] Tambahkan animasi interpolasi pergerakan marker (tween posisi lama → baru selama interval update).
+- [ ] Implementasi layer **trail**: fetch riwayat via endpoint baru `GET /devices/:id/trail` (query `ST_MakeLine` dari `tracking_history`), render sebagai `LineString`.
+- [ ] Uji dengan simulator device dari 8.2 berjalan bersamaan → pastikan marker bergerak real-time di peta tanpa lag signifikan.
+- [ ] Tambahkan indikator status koneksi (connected/disconnected) & auto-reconnect WebSocket di frontend.
+- [ ] Load test dasar: jalankan beberapa simulator device paralel (mis. 20–50 device), amati latensi & beban Redis/DB.
+- [ ] Terapkan throttling publish MQTT (maks 1 update/detik/device) bila diperlukan setelah load test.
+- [ ] **Checkpoint akhir**: demo end-to-end — buka aplikasi, aktifkan layer tracking, jalankan simulator, verifikasi posisi live + trail history tampil benar, lalu uji ulang seluruh fitur Fase 3 berjalan berdampingan dengan tracking aktif (tidak saling mengganggu performa).
+
+### 8.5 Finalisasi
+
+- [ ] Review keamanan: autentikasi JWT di seluruh endpoint CRUD/upload, validasi ukuran & tipe file upload untuk mencegah abuse.
+- [ ] Tulis dokumentasi setup (`.env.example`, cara `docker compose up`, cara migrasi, cara menjalankan simulator).
+- [ ] Deploy staging (opsional): build image Docker untuk backend & frontend, deploy via Docker Compose/Kubernetes.
+- [ ] Persiapan demo/presentasi tugas akhir: siapkan skenario data + skrip demo fitur sesuai daftar di bagian 1.
