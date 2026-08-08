@@ -1,0 +1,56 @@
+# --- Claude Code / AI tooling ---
+.claude/
+.cursor/
+.windsurf/
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# --- Logs & temp files ---
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+~$*
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Node (in case tooling is added later) ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# --- Python (used for local static-file server / scripts) ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- GIS / QGIS working files ---
+*.qgz~
+*.qgs~
+*.gpkg-wal
+*.gpkg-shm
+*.gpkg-journal
+*.shp.lock
+*.qix
+*.aux.xml
+
+# --- Archives / exports ---
+*.zip
+*.rar
+*.7z
