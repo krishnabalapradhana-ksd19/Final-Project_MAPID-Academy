@@ -1,4 +1,3 @@
-import './peta-kerja-bantul.css';
 import kabLogo from '../../assets/logo_kabupaten_bantul.png';
 import { createLbsPage } from '../shared/lbs-page.js';
 

@@ -1,4 +1,4 @@
-@import '../shared/loading.css';
+@import './loading.css';
 
 :root {
   /* Palet disamakan dengan src/landing-pages.css */

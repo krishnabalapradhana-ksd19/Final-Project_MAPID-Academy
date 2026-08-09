@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import proj4 from 'proj4';
+import { REGIONS } from '../src/shared/regions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -24,13 +25,10 @@ const OUT_DIR = path.join(ROOT, 'public', 'data', 'generated');
 // dipakai untuk MENGHITUNG LUAS. Penyajian peta tetap EPSG:4326 (tidak berubah).
 const toUtm49S = proj4('EPSG:4326', '+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs');
 
-const KABUPATEN = [
-  { name: 'Bantul', slug: 'bantul' },
-  { name: 'Gunungkidul', slug: 'gunungkidul' },
-  { name: 'Kulon Progo', slug: 'kulon-progo' },
-  { name: 'Sleman', slug: 'sleman' },
-  { name: 'Kota Yogyakarta', slug: 'yogyakarta' }
-];
+// name/slug diturunkan dari src/shared/regions.js (satu sumber kebenaran
+// dipakai bersama landing-pages.js) — name di sini harus persis sama dengan
+// nilai kolom WADMKK di geojson mentah, karenanya dipetakan dari `wadmkk`.
+const KABUPATEN = REGIONS.map((r) => ({ name: r.wadmkk, slug: r.slug }));
 
 const COORD_PRECISION = 6; // ~0.11 m di ekuator, cukup untuk batas persil
 

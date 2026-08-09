@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import './lbs-page.css';
 import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './basemaps.js';
 import { fetchJsonWithTimeout, loadGeojsonViaWorker } from './data-loading.js';
 
@@ -359,7 +360,6 @@ export function createLbsPage(config) {
   }
 
   let stats = null;
-  let geoState = null; // { attrsPromise } diisi setelah poligon dimuat
   let attrsPromise = null;
   let activeKec = '';
 

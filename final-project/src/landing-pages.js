@@ -2,40 +2,21 @@ import './landing-pages.css';
 import MAPID_LOGO from './mapid-assets/logo_mapid_hires.png';
 import DIY_LOGO from './prov-diy-assets/diy-logo.svg';
 import WILAYAH_SVG_URL from './prov-diy-assets/diy-wilayah.svg';
+import { REGIONS } from './shared/regions.js';
 
 // Geojson besar disajikan lewat public/data/ (diisi saat build oleh GitHub Actions
 // dari Google Drive, lihat google-drive-integration/download-geojson.js), bukan
 // di-bundle langsung karena ukurannya ratusan MB.
 const GEOJSON_URL = `${import.meta.env.BASE_URL}data/LBS_DIY_66871HA.geojson`;
 
-// Peta kerja per kabupaten/kota (dibuat di src/map/**), dipetakan dari id region pada SVG.
-// Path harus sesuai struktur hasil build Vite (dist/src/map/**/*.html) — alias URL pendek
-// (mis. /peta-kerja-sleman.html) hanya berlaku di dev server, tidak ada di build statis.
-const REGION_LINKS = {
-  sleman: `${import.meta.env.BASE_URL}src/map/kab_sleman/peta-kerja-sleman.html`,
-  kulonprogo: `${import.meta.env.BASE_URL}src/map/kab_kulon-progo/peta-kerja-kulon-progo.html`,
-  bantul: `${import.meta.env.BASE_URL}src/map/kab-bantul/peta-kerja-bantul.html`,
-  gunungkidul: `${import.meta.env.BASE_URL}src/map/kab_gunung-kidul/peta-kerja-gunung-kidul.html`,
-  kotayogya: `${import.meta.env.BASE_URL}src/map/kota_yogyakarta/peta-kerja-yogyakarta.html`
-};
-
-// Id region pada SVG dipetakan ke nilai WADMKK di GeoJSON LBS, untuk agregasi luas & jumlah bidang.
-const REGION_WADMKK = {
-  sleman: 'Sleman',
-  kulonprogo: 'Kulon Progo',
-  bantul: 'Bantul',
-  gunungkidul: 'Gunungkidul',
-  kotayogya: 'Kota Yogyakarta'
-};
-
-// Nama pendek untuk label permanen di atas peta (data-name penuh dipakai di readout).
-const REGION_SHORT_NAME = {
-  sleman: 'Sleman',
-  kulonprogo: 'Kulon Progo',
-  bantul: 'Bantul',
-  gunungkidul: 'Gunungkidul',
-  kotayogya: 'Kota Yogyakarta'
-};
+// Region dari src/shared/regions.js, diindeks per id elemen pada SVG wilayah
+// (svgId) — dipakai untuk link peta kerja, nilai WADMKK (agregasi luas &
+// jumlah bidang), dan nama pendek label di atas peta.
+//
+// Path link harus sesuai struktur hasil build Vite (dist/src/map/**/*.html) —
+// alias URL pendek (mis. /peta-kerja-sleman.html) hanya berlaku di dev
+// server, tidak ada di build statis.
+const REGION_BY_SVG_ID = Object.fromEntries(REGIONS.map((r) => [r.svgId, r]));
 
 // Peta ini adalah satu-satunya CTA di halaman, jadi di layar sentuh (tanpa hover)
 // tap pertama hanya menampilkan info wilayah + tombol konfirmasi — bukan langsung
@@ -157,8 +138,8 @@ function clear(group, regions, labels) {
 }
 
 function openRegion(el) {
-  const url = REGION_LINKS[el.id];
-  if (url) window.location.href = url;
+  const region = REGION_BY_SVG_ID[el.id];
+  if (region) window.location.href = `${import.meta.env.BASE_URL}${region.htmlPath}`;
 }
 
 // Peta SVG dirender & bisa langsung diklik begitu SVG-nya saja selesai dimuat
@@ -189,7 +170,7 @@ fetch(WILAYAH_SVG_URL)
       text.setAttribute('y', bbox.y + bbox.height / 2);
       text.setAttribute('class', 'region-label');
       text.dataset.region = el.id;
-      text.textContent = REGION_SHORT_NAME[el.id] || el.dataset.name;
+      text.textContent = REGION_BY_SVG_ID[el.id]?.shortName || el.dataset.name;
       labelsGroup.appendChild(text);
     });
     const labels = labelsGroup.querySelectorAll('.region-label');
@@ -221,7 +202,7 @@ fetch(WILAYAH_SVG_URL)
       .then(geojson => {
         const byWadmkk = aggregateByWadmkk(geojson.features);
         regions.forEach(el => {
-          const stat = byWadmkk[REGION_WADMKK[el.id]];
+          const stat = byWadmkk[REGION_BY_SVG_ID[el.id]?.wadmkk];
           if (stat) {
             el.dataset.luas = `${fmtHa(stat.luas)} Ha LBS`;
             el.dataset.stat = `${stat.kecamatan.size} kapanewon · ${fmtInt(stat.count)} bidang`;

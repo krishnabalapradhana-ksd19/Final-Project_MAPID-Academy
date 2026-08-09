@@ -1,4 +1,3 @@
-import './peta-kerja-gunung-kidul.css';
 import kabLogo from '../../assets/logo_kabupaten_gunung_kidul.png';
 import { createLbsPage } from '../shared/lbs-page.js';
 

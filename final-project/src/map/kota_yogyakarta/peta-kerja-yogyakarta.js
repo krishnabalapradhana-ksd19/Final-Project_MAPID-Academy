@@ -1,4 +1,3 @@
-import './peta-kerja-yogyakarta.css';
 import kabLogo from '../../assets/logo_kota_yogyakarta.png';
 import { createLbsPage } from '../shared/lbs-page.js';
 

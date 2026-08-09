@@ -1,4 +1,3 @@
-import './peta-kerja-sleman.css';
 import slemanLogo from '../../assets/logo_kabupaten_sleman.png';
 import { createLbsPage } from '../shared/lbs-page.js';
 

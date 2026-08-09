@@ -1,4 +1,3 @@
-import './peta-kerja-kulon-progo.css';
 import kabLogo from '../../assets/logo_kabupaten_kulon_progo.png';
 import { createLbsPage } from '../shared/lbs-page.js';
 
