@@ -57,7 +57,7 @@ function buildLayout() {
 
       <footer class="footer">
         <p class="org">Alvito Krishna Balapradhana<br>
-          <em>Mapid Acamy Bootcamp WebGIS - Final Project</em></p>
+          <em>MAPID Academy Bootcamp WebGIS - Final Project</em></p>
       </footer>
     </div>
   `;
