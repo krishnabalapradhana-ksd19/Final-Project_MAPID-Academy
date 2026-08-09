@@ -54,3 +54,6 @@ venv/
 *.zip
 *.rar
 *.7z
+
+# --- Large GIS data files (kept local only) ---
+final-project/src/prov-diy-assets/diy-lbs25/LBS_DIY_66871HA.geojson
