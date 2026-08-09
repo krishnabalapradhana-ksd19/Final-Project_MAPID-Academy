@@ -540,6 +540,37 @@ body {
   right: 8px !important;
 }
 
+/* ---------- Skala bar & skala angka (bottom-left) ---------- */
+
+.maplibregl-ctrl-bottom-left {
+  left: 8px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.maplibregl-ctrl-scale {
+  background: var(--surface-1);
+  border: 1px solid var(--border) !important;
+  border-top: 1px solid var(--border) !important;
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.numeric-scale-control {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {

@@ -1,0 +1,75 @@
+name: Deploy final-project to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'final-project/**'
+      - 'google-drive-integration/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Google Drive integration deps
+        working-directory: google-drive-integration
+        run: npm install
+
+      - name: Write Service Account credentials
+        working-directory: google-drive-integration
+        run: echo "$GDRIVE_CREDENTIALS_JSON" > credentials.json
+        env:
+          GDRIVE_CREDENTIALS_JSON: ${{ secrets.GDRIVE_CREDENTIALS_JSON }}
+
+      - name: Download large geojson dataset from Drive
+        working-directory: google-drive-integration
+        run: node download-geojson.js
+        env:
+          GDRIVE_FILE_ID: ${{ secrets.GDRIVE_FILE_ID }}
+
+      - name: Remove credentials after use
+        working-directory: google-drive-integration
+        run: rm -f credentials.json
+
+      - name: Install final-project deps
+        working-directory: final-project
+        run: npm install
+
+      - name: Build
+        working-directory: final-project
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: final-project/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

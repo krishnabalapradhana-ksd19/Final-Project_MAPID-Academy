@@ -1,17 +1,20 @@
 import './landing-pages.css';
+import MAPID_LOGO from './mapid-assets/logo_mapid_hires.png';
+import DIY_LOGO from './prov-diy-assets/diy-logo.svg';
+import WILAYAH_SVG_URL from './prov-diy-assets/diy-wilayah.svg';
 
-const MAPID_LOGO = '/src/mapid-assets/logo_mapid_hires.png';
-const DIY_LOGO = '/src/prov-diy-assets/diy-logo.svg';
-const WILAYAH_SVG_URL = '/src/prov-diy-assets/diy-wilayah.svg';
-const GEOJSON_URL = '/src/prov-diy-assets/diy-lbs25/LBS_DIY_66871HA.geojson';
+// Geojson besar disajikan lewat public/data/ (diisi saat build oleh GitHub Actions
+// dari Google Drive, lihat google-drive-integration/download-geojson.js), bukan
+// di-bundle langsung karena ukurannya ratusan MB.
+const GEOJSON_URL = `${import.meta.env.BASE_URL}data/LBS_DIY_66871HA.geojson`;
 
 // Peta kerja per kabupaten/kota (dibuat di src/map/**), dipetakan dari id region pada SVG.
 const REGION_LINKS = {
-  sleman: '/peta-kerja-sleman.html',
-  kulonprogo: '/peta-kerja-kulon-progo.html',
-  bantul: '/peta-kerja-bantul.html',
-  gunungkidul: '/peta-kerja-gunung-kidul.html',
-  kotayogya: '/peta-kerja-yogyakarta.html'
+  sleman: `${import.meta.env.BASE_URL}peta-kerja-sleman.html`,
+  kulonprogo: `${import.meta.env.BASE_URL}peta-kerja-kulon-progo.html`,
+  bantul: `${import.meta.env.BASE_URL}peta-kerja-bantul.html`,
+  gunungkidul: `${import.meta.env.BASE_URL}peta-kerja-gunung-kidul.html`,
+  kotayogya: `${import.meta.env.BASE_URL}peta-kerja-yogyakarta.html`
 };
 
 // Id region pada SVG dipetakan ke nilai WADMKK di GeoJSON LBS, untuk agregasi luas & jumlah bidang.

@@ -55,5 +55,9 @@ venv/
 *.rar
 *.7z
 
-# --- Large GIS data files (kept local only) ---
-final-project/src/prov-diy-assets/diy-lbs25/LBS_DIY_66871HA.geojson
+# --- Large GIS data files (fetched from Google Drive at build/CI time, kept local only) ---
+final-project/public/data/
+
+# --- Google Service Account credentials (never commit) ---
+google-drive-integration/credentials.json
+credentials.json

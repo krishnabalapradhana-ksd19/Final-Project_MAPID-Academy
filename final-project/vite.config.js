@@ -49,6 +49,9 @@ const pageInputs = Object.fromEntries(
 );
 
 export default defineConfig({
+  // Situs di-deploy ke GitHub Pages di bawah subpath repo
+  // (https://<user>.github.io/Final-Project_MAPID-Academy/), bukan di root domain.
+  base: '/Final-Project_MAPID-Academy/',
   plugins: [pageAliasPlugin(pages)],
   build: {
     rollupOptions: {

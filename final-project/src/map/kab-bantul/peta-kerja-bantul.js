@@ -3,7 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './peta-kerja-bantul.css';
 import kabLogo from '../../assets/logo_kabupaten_bantul.png';
 
-const GEOJSON_URL = '/src/prov-diy-assets/diy-lbs25/LBS_DIY_66871HA.geojson';
+const GEOJSON_URL = `${import.meta.env.BASE_URL}data/LBS_DIY_66871HA.geojson`;
 
 const KAB_NAME = 'Bantul';
 const KAB_LABEL = 'Kabupaten Bantul';
@@ -245,6 +245,39 @@ map.addControl(
   }),
   'bottom-right'
 );
+
+// Kontrol skala angka (representative fraction, mis. "1 : 50.000"),
+// mendampingi ScaleControl bawaan MapLibre (skala bar) di bottom-left.
+class NumericScaleControl {
+  onAdd(mapInstance) {
+    this._map = mapInstance;
+    this._container = document.createElement('div');
+    this._container.className = 'maplibregl-ctrl numeric-scale-control';
+    this._update = this._update.bind(this);
+    mapInstance.on('move', this._update);
+    this._update();
+    return this._container;
+  }
+
+  onRemove() {
+    this._map.off('move', this._update);
+    this._container.parentNode.removeChild(this._container);
+    this._map = undefined;
+  }
+
+  _update() {
+    const { lat } = this._map.getCenter();
+    const zoom = this._map.getZoom();
+    const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+    const screenDpi = 96;
+    const scaleDenominator = Math.round((metersPerPixel * screenDpi) / 0.0254);
+    this._container.textContent = `1 : ${scaleDenominator.toLocaleString('id-ID')}`;
+  }
+}
+
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+map.addControl(new NumericScaleControl(), 'bottom-left');
+map.addControl(new maplibregl.FullscreenControl(), 'top-right');
 
 const getBounds = (features) => {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
