@@ -57,6 +57,7 @@ venv/
 
 # --- Large GIS data files (fetched from Google Drive at build/CI time, kept local only) ---
 final-project/public/data/
+final-project/data-raw/
 
 # --- Google Service Account credentials (never commit) ---
 google-drive-integration/credentials.json

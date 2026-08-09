@@ -3,16 +3,17 @@ const fs = require('fs');
 const path = require('path');
 
 // Dipakai oleh GitHub Actions saat build: mengambil geojson besar dari
-// Google Drive (via Service Account) dan menaruhnya di public/data/ pada
-// final-project, karena file itu terlalu besar untuk disimpan di git.
+// Google Drive (via Service Account) dan menaruhnya di final-project/data-raw/
+// (BUKAN public/data/) karena file itu terlalu besar untuk disimpan di git,
+// dan tidak boleh ikut ter-deploy utuh — scripts/build-data.mjs yang
+// memecahnya jadi file kecil per kabupaten di public/data/generated/.
 const FILE_ID = process.env.GDRIVE_FILE_ID || '1WU1ZCKk6Ua1PUKv5Snmb-i6oSMS50iPn';
 const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
 const OUTPUT_PATH = path.join(
   __dirname,
   '..',
   'final-project',
-  'public',
-  'data',
+  'data-raw',
   'LBS_DIY_66871HA.geojson'
 );
 
