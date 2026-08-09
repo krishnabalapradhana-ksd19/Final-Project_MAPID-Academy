@@ -68,10 +68,13 @@ export function createLbsPage(config) {
 
       <div class="body-row">
         <nav class="sidebar">
-          <button class="side-item active" type="button" title="Lahan Sawah Dilindungi / Lahan Pertanian Pangan Berkelanjutan">
+          <button class="side-item active" type="button" title="Lahan Baku Sawah" aria-label="Lahan Baku Sawah">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12l9-9 9 9" />
-              <path d="M5 10v10h14V10" />
+              <path d="M7 20h10" />
+              <path d="M10 20c0-4.4 2-6.7 4-8.4" />
+              <path d="M9.5 9.4c1.1.8 1.8 2.2 2 3.6" />
+              <path d="M14 10.5c1.5-1 3.5-2.5 3-5.5-3 0-5 1-6 2.5" />
+              <path d="M9 9.5C9 5.5 7 4 4 4c0 3.5 1 5 5 5.5" />
             </svg>
             <span>Lahan Baku Sawah</span>
           </button>
