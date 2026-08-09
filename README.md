@@ -19,6 +19,7 @@ Dibangun oleh **Alvito Krishna Balapradhana**.
 - [Tech Stack](#tech-stack)
 - [Struktur Folder Project](#struktur-folder-project)
 - [Alur & Kontrak Data](#alur--kontrak-data)
+- [Roadmap / Rencana Pengembangan](#roadmap--rencana-pengembangan)
 - [Prasyarat](#prasyarat)
 - [Instalasi](#instalasi)
 - [Konfigurasi](#konfigurasi)
@@ -132,6 +133,22 @@ final-project/public/data/generated/
 `build-data.mjs` juga menghitung ulang luas tiap bidang dari geometri (bukan dari field `Shape_Area` sumber) dengan mereproyeksikan koordinat ke **EPSG:32749 (UTM 49S)** terlebih dahulu, agar hasil luas akurat secara metrik meskipun peta tetap disajikan dalam EPSG:4326.
 
 Slug kabupaten yang dipakai di penamaan file: `bantul`, `gunungkidul`, `kulon-progo`, `sleman`, `yogyakarta`.
+
+---
+
+## Roadmap / Rencana Pengembangan
+
+Versi saat ini adalah **static site read-only** (lihat [Fitur Utama](#fitur-utama)) — belum ada backend maupun database. Berikut fitur lanjutan yang direncanakan pada halaman peta kerja, beserta kebutuhan teknisnya:
+
+| Fitur | Deskripsi | Kebutuhan Teknis |
+|---|---|---|
+| **Widget Layer** | Panel kontrol untuk mengaktifkan/menonaktifkan & mengatur beberapa layer data sekaligus pada satu peta. Saat ini setiap halaman peta kerja hanya menampilkan satu layer LBS yang selalu aktif, tanpa panel toggle layer. | Frontend saja — state layer dikelola di client |
+| **Widget Ukur (Digitasi)** | Alat gambar titik/garis/poligon langsung di peta untuk mengukur jarak & luas secara interaktif. Saat ini belum ada interaksi gambar/digitasi apa pun di peta. | Frontend saja — mis. `maplibre-gl-draw` + perhitungan geodesic |
+| **Upload Data (cek data, preview-only)** | Pengguna dapat mengunggah berkas (GeoJSON/SHP/KML) untuk ditampilkan **sementara** di peta sebagai pratinjau/pengecekan visual. Data yang diunggah **tidak disimpan** ke server, database, maupun ke `public/data/generated/` — murni untuk pengecekan di sisi client. | Frontend saja — parsing di browser; dependency `shpjs` yang sudah terpasang namun belum dipakai cocok untuk kebutuhan ini |
+| **Print Peta** | Ekspor tampilan peta yang sedang aktif (termasuk legend & skala) ke PDF/gambar. | Frontend saja — mis. `html2canvas` / `jsPDF` |
+| **Edit Atribut Fitur** | Popup detail bidang saat ini bersifat **read-only** (lihat `setupFeaturePopup` di `src/map/shared/lbs-page.js`). Rencana pengembangan memungkinkan pengguna mengubah nilai kolom atribut langsung dari popup. | **Membutuhkan backend + database** agar perubahan tersimpan permanen — satu-satunya item roadmap yang keluar dari arsitektur static site saat ini |
+
+> Kelima item di atas adalah rencana pengembangan, **belum diimplementasikan** di kode saat ini.
 
 ---
 
