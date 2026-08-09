@@ -3,8 +3,8 @@
 <svg class="map" viewBox="-50 -50 1113 916" role="group" aria-label="Peta Daerah Istimewa Yogyakarta" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="fillIdle" x1="0" y1="0" x2="0.4" y2="1">
-      <stop offset="0%"   stop-color="#cfeee7" stop-opacity=".26"/>
-      <stop offset="100%" stop-color="#5fb6ab" stop-opacity=".13"/>
+      <stop offset="0%"   stop-color="#cfeee7" stop-opacity=".42"/>
+      <stop offset="100%" stop-color="#5fb6ab" stop-opacity=".24"/>
     </linearGradient>
     <linearGradient id="fillHot" x1="0" y1="0" x2="0.4" y2="1">
       <stop offset="0%"   stop-color="#b9ffee" stop-opacity=".55"/>

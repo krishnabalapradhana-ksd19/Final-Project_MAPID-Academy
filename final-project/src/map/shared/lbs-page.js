@@ -43,11 +43,21 @@ export function createLbsPage(config) {
     app.innerHTML = `
       <header class="topbar">
         <div class="topbar-left">
-          <img class="brand-logo" src="${logo}" alt="${logoAlt}" />
-          <div>
-            <div class="brand-title">LBS ${kabName}</div>
-            <div class="brand-sub">Lahan Baku Sawah</div>
-          </div>
+          <a class="topbar-home" href="${BASE}" title="Kembali ke Beranda" aria-label="Kembali ke Beranda">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            <span>Beranda</span>
+          </a>
+          <nav class="breadcrumb" aria-label="Lokasi saat ini">
+            <span class="breadcrumb-sep" aria-hidden="true">/</span>
+            <img class="brand-logo" src="${logo}" alt="${logoAlt}" />
+            <div>
+              <div class="brand-title">LBS ${kabName}</div>
+              <div class="brand-sub">Lahan Baku Sawah</div>
+            </div>
+          </nav>
         </div>
 
         <div class="topbar-search">

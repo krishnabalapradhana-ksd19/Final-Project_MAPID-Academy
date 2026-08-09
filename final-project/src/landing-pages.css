@@ -127,23 +127,42 @@ h1 span{display:block; color:var(--mint); font-weight:600}
 svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visible}
 
 .region{
-  fill:url(#fillIdle); stroke:rgba(190,240,230,.42); stroke-width:1.6;
+  fill:url(#fillIdle); stroke:rgba(190,240,230,.65); stroke-width:1.9;
   stroke-linejoin:round; cursor:pointer;
   transform-box:fill-box; transform-origin:center;
   transition:transform .38s cubic-bezier(.2,.9,.25,1),
              fill .3s ease, stroke .3s ease, opacity .3s ease;
   outline:none;
+  animation:idle-pulse 4.5s ease-in-out infinite;
 }
-#regions.dimmed .region{opacity:.4}
+#regions.dimmed .region{opacity:.4; animation:none}
 .region:hover,.region:focus-visible,.region.is-active{
   fill:url(#fillHot); stroke:var(--mint); stroke-width:2.1; opacity:1 !important;
   transform:translateY(-9px) scale(1.03);
   animation:aura 2.2s ease-in-out infinite;
 }
 .region:focus-visible{stroke:#fff; stroke-dasharray:6 4}
+@keyframes idle-pulse{
+  0%,100%{stroke-opacity:.65}
+  50%    {stroke-opacity:1}
+}
 @keyframes aura{
   0%,100%{filter:drop-shadow(0 10px 18px rgba(0,0,0,.6)) drop-shadow(0 0 12px rgba(134,232,211,.55))}
   50%    {filter:drop-shadow(0 10px 18px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(134,232,211,.95))}
+}
+
+/* --- label nama wilayah (selalu terlihat, di-generate dari JS via getBBox) --- */
+.region-label{
+  font-family:var(--font-mono); font-size:12px; font-weight:600;
+  fill:rgba(233,245,242,.75); text-anchor:middle; dominant-baseline:middle;
+  pointer-events:none; letter-spacing:.02em;
+  filter:drop-shadow(0 1px 3px rgba(4,25,28,.9));
+  transition:fill .3s ease;
+}
+#regions.dimmed ~ #region-labels .region-label{fill:rgba(233,245,242,.35)}
+.region-label.is-active{fill:var(--mint); font-weight:700}
+@media (max-width:520px){
+  .region-label{font-size:9px}
 }
 
 .readout{
@@ -160,6 +179,16 @@ svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visibl
 .readout b{font-size:14px; font-weight:700; letter-spacing:-.01em}
 .readout span{font-family:var(--font-mono); font-size:11px; color:var(--mint); opacity:.9}
 .readout small{font-family:var(--font-mono); font-size:10px; color:var(--ink-dim)}
+.ro-open{
+  margin-top:8px; align-self:flex-start;
+  border:1px solid var(--mint); border-radius:8px;
+  background:rgba(134,232,211,.12); color:var(--mint);
+  font-family:var(--font-display); font-size:12.5px; font-weight:700;
+  padding:8px 14px; cursor:pointer;
+  transition:background .2s ease, transform .15s ease;
+}
+.ro-open:hover,.ro-open:focus-visible{background:rgba(134,232,211,.22)}
+.ro-open:active{transform:scale(.97)}
 
 .hint{
   display:flex; align-items:center; justify-content:center; gap:10px;

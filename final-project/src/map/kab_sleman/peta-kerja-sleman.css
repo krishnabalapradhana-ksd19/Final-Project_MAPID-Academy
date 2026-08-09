@@ -68,6 +68,36 @@ body {
   flex: none;
 }
 
+.topbar-home {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--accent-dark);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  flex: none;
+}
+
+.topbar-home:hover,
+.topbar-home:focus-visible {
+  background: var(--accent-soft);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.breadcrumb-sep {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 .brand-logo {
   width: 34px;
   height: 34px;
@@ -574,6 +604,16 @@ body {
 }
 
 /* ---------- Responsive ---------- */
+
+@media (max-width: 520px) {
+  .topbar-home span {
+    display: none;
+  }
+
+  .breadcrumb .brand-sub {
+    display: none;
+  }
+}
 
 @media (max-width: 900px) {
   .topbar-search {

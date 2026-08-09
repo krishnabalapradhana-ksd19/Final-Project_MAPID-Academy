@@ -28,6 +28,20 @@ const REGION_WADMKK = {
   kotayogya: 'Kota Yogyakarta'
 };
 
+// Nama pendek untuk label permanen di atas peta (data-name penuh dipakai di readout).
+const REGION_SHORT_NAME = {
+  sleman: 'Sleman',
+  kulonprogo: 'Kulon Progo',
+  bantul: 'Bantul',
+  gunungkidul: 'Gunungkidul',
+  kotayogya: 'Kota Yogyakarta'
+};
+
+// Peta ini adalah satu-satunya CTA di halaman, jadi di layar sentuh (tanpa hover)
+// tap pertama hanya menampilkan info wilayah + tombol konfirmasi — bukan langsung
+// pindah halaman — supaya user tidak "tersasar" ke peta kerja karena salah ketuk.
+const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
 function buildLayout() {
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -66,6 +80,7 @@ function buildLayout() {
             <b id="ro-name">Pilih wilayah</b>
             <span id="ro-stat">5 kabupaten / kota</span>
             <small id="ro-note">arahkan kursor atau ketuk peta</small>
+            <button type="button" id="ro-open" class="ro-open" hidden>Buka Peta Kerja →</button>
           </div>
 
           <div id="map-holder"></div>
@@ -88,6 +103,7 @@ const readout = document.getElementById('readout');
 const roName  = document.getElementById('ro-name');
 const roStat  = document.getElementById('ro-stat');
 const roNote  = document.getElementById('ro-note');
+const roOpen  = document.getElementById('ro-open');
 const metaSel = document.getElementById('meta-sel');
 
 const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
@@ -107,24 +123,37 @@ function aggregateByWadmkk(features) {
   return byWadmkk;
 }
 
-function activate(el, group, regions) {
+function setActiveLabel(labels, el) {
+  labels.forEach(l => l.classList.toggle('is-active', l.dataset.region === el.id));
+}
+
+function activate(el, group, regions, labels) {
   group.classList.add('dimmed');
   regions.forEach(r => r.classList.toggle('is-active', r === el));
+  setActiveLabel(labels, el);
   roName.textContent = el.dataset.name;
   roStat.textContent = el.dataset.luas || 'Memuat data…';
   roNote.textContent = el.dataset.stat || '';
   readout.classList.add('show');
   metaSel.textContent = el.dataset.name;
+
+  if (isTouchDevice) {
+    roOpen.hidden = false;
+    roOpen.onclick = () => openRegion(el);
+  }
 }
 
-function clear(group, regions) {
+function clear(group, regions, labels) {
   group.classList.remove('dimmed');
   regions.forEach(r => r.classList.remove('is-active'));
+  labels.forEach(l => l.classList.remove('is-active'));
   readout.classList.remove('show');
   roName.textContent = 'Pilih wilayah';
   roStat.textContent = '5 kabupaten / kota';
   roNote.textContent = 'arahkan kursor atau ketuk peta';
   metaSel.textContent = 'Pilih wilayah';
+  roOpen.hidden = true;
+  roOpen.onclick = null;
 }
 
 function openRegion(el) {
@@ -145,17 +174,47 @@ fetch(WILAYAH_SVG_URL)
     const group   = mapHolder.querySelector('#regions');
     const regions = mapHolder.querySelectorAll('.region');
 
+    // Label nama wilayah dibuat dari getBBox() tiap path (bukan dihitung manual
+    // dari koordinat polygon) supaya selalu presisi terlepas dari perubahan data SVG.
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const labelsGroup = document.createElementNS(svgNS, 'g');
+    labelsGroup.setAttribute('id', 'region-labels');
+    labelsGroup.setAttribute('aria-hidden', 'true');
+    svg.appendChild(labelsGroup);
+
     regions.forEach(el => {
-      el.addEventListener('mouseenter', () => activate(el, group, regions));
-      el.addEventListener('focus',      () => activate(el, group, regions));
-      el.addEventListener('blur',       () => clear(group, regions));
-      el.addEventListener('click',      () => openRegion(el));
+      const bbox = el.getBBox();
+      const text = document.createElementNS(svgNS, 'text');
+      text.setAttribute('x', bbox.x + bbox.width / 2);
+      text.setAttribute('y', bbox.y + bbox.height / 2);
+      text.setAttribute('class', 'region-label');
+      text.dataset.region = el.id;
+      text.textContent = REGION_SHORT_NAME[el.id] || el.dataset.name;
+      labelsGroup.appendChild(text);
+    });
+    const labels = labelsGroup.querySelectorAll('.region-label');
+
+    regions.forEach(el => {
+      el.addEventListener('mouseenter', () => activate(el, group, regions, labels));
+      el.addEventListener('focus',      () => activate(el, group, regions, labels));
+      el.addEventListener('blur',       () => clear(group, regions, labels));
+      el.addEventListener('click', (e) => {
+        // Di layar sentuh, tap pertama hanya menampilkan info (lihat komentar
+        // isTouchDevice di atas) — tap kedua pada wilayah yang sama, atau tombol
+        // "Buka Peta Kerja" di readout, baru memicu navigasi.
+        if (isTouchDevice && !el.classList.contains('is-active')) {
+          e.preventDefault();
+          activate(el, group, regions, labels);
+          return;
+        }
+        openRegion(el);
+      });
       el.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRegion(el); }
       });
     });
 
-    svg.addEventListener('mouseleave', () => clear(group, regions));
+    svg.addEventListener('mouseleave', () => clear(group, regions, labels));
 
     fetch(GEOJSON_URL)
       .then(res => res.json())
