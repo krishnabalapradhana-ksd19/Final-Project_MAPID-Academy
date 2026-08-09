@@ -91,12 +91,15 @@ Final-Project_MAPID-Academy/
 │   │   └── attrs-lbs-<slug>.json    # Atribut lengkap per bidang, diindeks oleh _fid
 │   └── src/
 │       ├── landing-pages.js / .css  # Halaman peta wilayah DIY (5 region SVG)
+│       ├── shared/
+│       │   └── regions.js           # Satu sumber data 5 kabupaten/kota (slug, id SVG, nama, WADMKK) — dipakai landing-pages.js & scripts/build-data.mjs
 │       ├── assets/                  # Logo kabupaten/kota
 │       ├── mapid-assets/            # Logo MAPID
 │       ├── prov-diy-assets/         # Logo DIY, peta SVG wilayah (diy-wilayah.svg)
 │       └── map/
 │           ├── shared/
 │           │   ├── lbs-page.js      # Factory halaman peta kerja — dipakai oleh kelima kabupaten/kota
+│           │   ├── lbs-page.css     # Tema & layout halaman peta kerja — satu file dipakai bersama oleh kelima kabupaten/kota
 │           │   ├── basemaps.js      # Konfigurasi basemap (Google/OSM/Esri)
 │           │   ├── data-loading.js  # Fetch dengan timeout + loader via Web Worker
 │           │   ├── geojson-worker.js
@@ -105,13 +108,13 @@ Final-Project_MAPID-Academy/
 │           ├── kab_gunung-kidul/
 │           ├── kab_kulon-progo/
 │           ├── kab_sleman/
-│           └── kota_yogyakarta/     # Masing-masing: .html + .js (config kabupaten) + .css (tema warna)
+│           └── kota_yogyakarta/     # Masing-masing hanya: .html + .js (config kabupaten: nama, logo, koordinat pusat, zoom)
 │
 ├── LICENSE                      # MIT
 └── README.md
 ```
 
-> Setiap folder `src/map/<kabupaten>/` hanya berisi file konfigurasi tipis (nama, logo, koordinat pusat peta, tema warna) — seluruh logika peta dipusatkan di `src/map/shared/lbs-page.js` agar tidak terjadi duplikasi kode di 5 halaman.
+> Setiap folder `src/map/<kabupaten>/` hanya berisi file konfigurasi tipis (nama, logo, koordinat pusat peta) — seluruh logika dan tampilan peta kerja dipusatkan di `src/map/shared/lbs-page.js` + `lbs-page.css` agar tidak terjadi duplikasi kode/style di 5 halaman. Metadata wilayah (nama, WADMKK, link) sendiri dipusatkan di `src/shared/regions.js`, dipakai bersama oleh landing page (browser) dan `scripts/build-data.mjs` (Node) supaya tidak ditulis ulang di banyak tempat dengan risiko id yang tidak konsisten.
 
 ---
 
@@ -144,7 +147,7 @@ Versi saat ini adalah **static site read-only** (lihat [Fitur Utama](#fitur-utam
 |---|---|---|
 | **Widget Layer** | Panel kontrol untuk mengaktifkan/menonaktifkan & mengatur beberapa layer data sekaligus pada satu peta. Saat ini setiap halaman peta kerja hanya menampilkan satu layer LBS yang selalu aktif, tanpa panel toggle layer. | Frontend saja — state layer dikelola di client |
 | **Widget Ukur (Digitasi)** | Alat gambar titik/garis/poligon langsung di peta untuk mengukur jarak & luas secara interaktif. Saat ini belum ada interaksi gambar/digitasi apa pun di peta. | Frontend saja — mis. `maplibre-gl-draw` + perhitungan geodesic |
-| **Upload Data (cek data, preview-only)** | Pengguna dapat mengunggah berkas (GeoJSON/SHP/KML) untuk ditampilkan **sementara** di peta sebagai pratinjau/pengecekan visual. Data yang diunggah **tidak disimpan** ke server, database, maupun ke `public/data/generated/` — murni untuk pengecekan di sisi client. | Frontend saja — parsing di browser; dependency `shpjs` yang sudah terpasang namun belum dipakai cocok untuk kebutuhan ini |
+| **Upload Data (cek data, preview-only)** | Pengguna dapat mengunggah berkas (GeoJSON/SHP/KML) untuk ditampilkan **sementara** di peta sebagai pratinjau/pengecekan visual. Data yang diunggah **tidak disimpan** ke server, database, maupun ke `public/data/generated/` — murni untuk pengecekan di sisi client. | Frontend saja — parsing di browser; untuk format Shapefile (`.shp`), pertimbangkan library seperti `shpjs` **saat fitur ini mulai dikerjakan** (belum ditambahkan ke `package.json` — dependency yang belum dipakai sebelumnya sudah dilepas agar tidak terpasang tanpa fungsi) |
 | **Print Peta** | Ekspor tampilan peta yang sedang aktif (termasuk legend & skala) ke PDF/gambar. | Frontend saja — mis. `html2canvas` / `jsPDF` |
 | **Edit Atribut Fitur** | Popup detail bidang saat ini bersifat **read-only** (lihat `setupFeaturePopup` di `src/map/shared/lbs-page.js`). Rencana pengembangan memungkinkan pengguna mengubah nilai kolom atribut langsung dari popup. | **Membutuhkan backend + database** agar perubahan tersimpan permanen — satu-satunya item roadmap yang keluar dari arsitektur static site saat ini |
 
