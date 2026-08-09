@@ -1,302 +1,307 @@
-# Final-Project_MAPID-Academy
+# Peta Kerja Lahan Baku Sawah — Provinsi D.I. Yogyakarta
 
-Tugas Akhir Dari MAPID Academy — **WebGIS LBS (Location Based Service) Platform**
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)
+![Vite](https://img.shields.io/badge/build-Vite-646CFF.svg)
+![MapLibre GL](https://img.shields.io/badge/map-MapLibre%20GL-396CB2.svg)
 
-Dokumen ini merupakan blueprint teknis dan alur kerja (workflow) pengembangan untuk membangun aplikasi WebGIS yang berfokus pada visualisasi dan manajemen data LBS, mencakup manajemen geometri, analisis spasial, data real-time, serta impor/ekspor multi-format.
+Tugas akhir **MAPID Academy Bootcamp WebGIS** — aplikasi WebGIS statis untuk visualisasi dan eksplorasi data **Lahan Baku Sawah (LBS)** di 5 kabupaten/kota Provinsi Daerah Istimewa Yogyakarta (Sleman, Bantul, Kulon Progo, Gunungkidul, dan Kota Yogyakarta).
+
+Dibangun oleh **Alvito Krishna Balapradhana**.
+
+> Ditujukan untuk pengambil kebijakan/analis tata ruang maupun masyarakat umum yang ingin melihat sebaran, luas, dan detail atribut bidang lahan baku sawah per kapanewon/kecamatan secara interaktif di peta.
 
 ---
 
-## 1. Ringkasan Kebutuhan Fitur
+## Daftar Isi
 
-| Kategori | Fitur |
+- [Fitur Utama](#fitur-utama)
+- [Tech Stack](#tech-stack)
+- [Struktur Folder Project](#struktur-folder-project)
+- [Alur & Kontrak Data](#alur--kontrak-data)
+- [Prasyarat](#prasyarat)
+- [Instalasi](#instalasi)
+- [Konfigurasi](#konfigurasi)
+- [Cara Menjalankan](#cara-menjalankan)
+- [Panduan Step-by-Step](#panduan-step-by-step)
+- [Deployment (CI/CD)](#deployment-cicd)
+- [Kontribusi](#kontribusi)
+- [Lisensi](#lisensi)
+- [Kontak / Author](#kontak--author)
+
+---
+
+## Fitur Utama
+
+- **Landing page peta wilayah DIY** — peta SVG interaktif 5 kabupaten/kota; hover menampilkan ringkasan luas & jumlah bidang LBS, klik membuka halaman peta kerja kabupaten terkait (`src/landing-pages.js`).
+- **Peta kerja per kabupaten/kota** (5 halaman terpisah, satu untuk tiap kabupaten/kota) berbasis MapLibre GL, masing-masing menyediakan:
+  - Render poligon bidang LBS dengan pewarnaan otomatis per kapanewon/kecamatan.
+  - **Filter wilayah** by kapanewon/kecamatan (chip filter) yang men-zoom peta ke bounding box wilayah terpilih.
+  - **Panel statistik**: total luas (Ha), jumlah bidang, rata-rata luas per bidang, dan persentase terhadap total kabupaten — pra-dihitung saat build, bukan dihitung di browser.
+  - **Grafik batang distribusi luas** per kapanewon/kecamatan.
+  - **Popup detail bidang** menampilkan seluruh kolom atribut asli saat sebuah poligon diklik (dimuat lazy, terpisah dari geometri).
+  - **Pencarian kapanewon/kecamatan** lewat kotak cari di topbar.
+  - **Switch basemap**: Google Satellite, OpenStreetMap, Esri Imagery, Esri Topografi.
+  - **Toggle proyeksi peta** 2D (Mercator) / Globe (bawaan MapLibre GL).
+  - Kontrol peta tambahan: skala bar + skala angka (representative fraction), fullscreen, geolocate ("Lokasi Saya").
+  - Status pemuatan (loading pill) dengan retry manual bila gagal memuat poligon/statistik.
+- **Pemuatan data non-blocking**: poligon GeoJSON besar diparse di **Web Worker** (`geojson-worker.js`) agar UI tidak freeze; statistik dan poligon dimuat paralel, bukan berantai.
+- **Data pipeline build-time**: geojson mentah (~301 MB, seluruh DIY) dipecah jadi file kecil per kabupaten + file statistik pra-hitung, sehingga browser pengunjung tidak pernah mengunduh/parse file mentah.
+
+---
+
+## Tech Stack
+
+| Layer | Teknologi | Keterangan |
+|---|---|---|
+| Build tool | **Vite 8** | Multi-page build (1 halaman landing + 5 halaman peta kerja), dev server dengan alias URL kustom |
+| Peta client | **MapLibre GL JS 5** | Rendering vector/raster, kontrol kustom (basemap switcher, skala angka) |
+| Bahasa | **JavaScript (ES Modules)**, vanilla — tanpa framework UI (React/Vue/dll) | Seluruh manipulasi DOM ditulis manual |
+| Proyeksi geospasial | **proj4** | Reprojeksi WGS84 → UTM 49S (EPSG:32749) untuk menghitung luas bidang secara akurat |
+| Concurrency | **Web Worker** (native) | Parsing GeoJSON besar di luar main thread |
+| Integrasi data | **googleapis** (Node) | Mengunduh geojson mentah dari Google Drive via Service Account saat build CI |
+| CI/CD | **GitHub Actions** | Build otomatis + deploy ke GitHub Pages saat push ke `main` |
+| Styling | CSS murni (custom, per halaman) | Tidak memakai framework CSS |
+
+---
+
+## Struktur Folder Project
+
+```
+Final-Project_MAPID-Academy/
+├── .github/workflows/
+│   └── deploy.yml              # CI: unduh data dari Drive → build Vite → deploy ke GitHub Pages
+│
+├── google-drive-integration/   # Skrip Node terpisah (bukan bagian bundle frontend)
+│   ├── download-geojson.js     # Unduh geojson mentah dari Google Drive (dipakai CI)
+│   ├── index.js                # Skrip utilitas: listing file di Drive
+│   └── package.json
+│
+├── final-project/              # Aplikasi WebGIS (root Vite)
+│   ├── index.html              # Entry landing page
+│   ├── vite.config.js          # Multi-page build + alias URL pendek untuk halaman peta kerja
+│   ├── scripts/
+│   │   └── build-data.mjs      # Pipeline: pecah geojson mentah → per kabupaten + statistik
+│   ├── data-raw/                # (gitignored) Geojson mentah hasil unduh dari Google Drive
+│   │   └── LBS_DIY_66871HA.geojson
+│   ├── public/data/generated/   # (gitignored, hasil build) Data siap-konsumsi per kabupaten
+│   │   ├── lbs-<slug>.geojson       # Poligon (properti minimal: WADMKC, _fid)
+│   │   ├── stats-lbs-<slug>.json    # Statistik pra-hitung per kabupaten/kecamatan
+│   │   └── attrs-lbs-<slug>.json    # Atribut lengkap per bidang, diindeks oleh _fid
+│   └── src/
+│       ├── landing-pages.js / .css  # Halaman peta wilayah DIY (5 region SVG)
+│       ├── assets/                  # Logo kabupaten/kota
+│       ├── mapid-assets/            # Logo MAPID
+│       ├── prov-diy-assets/         # Logo DIY, peta SVG wilayah (diy-wilayah.svg)
+│       └── map/
+│           ├── shared/
+│           │   ├── lbs-page.js      # Factory halaman peta kerja — dipakai oleh kelima kabupaten/kota
+│           │   ├── basemaps.js      # Konfigurasi basemap (Google/OSM/Esri)
+│           │   ├── data-loading.js  # Fetch dengan timeout + loader via Web Worker
+│           │   ├── geojson-worker.js
+│           │   └── loading.css
+│           ├── kab-bantul/
+│           ├── kab_gunung-kidul/
+│           ├── kab_kulon-progo/
+│           ├── kab_sleman/
+│           └── kota_yogyakarta/     # Masing-masing: .html + .js (config kabupaten) + .css (tema warna)
+│
+├── LICENSE                      # MIT
+└── README.md
+```
+
+> Setiap folder `src/map/<kabupaten>/` hanya berisi file konfigurasi tipis (nama, logo, koordinat pusat peta, tema warna) — seluruh logika peta dipusatkan di `src/map/shared/lbs-page.js` agar tidak terjadi duplikasi kode di 5 halaman.
+
+---
+
+## Alur & Kontrak Data
+
+```
+Google Drive (geojson mentah, ~301 MB)
+        │  download-geojson.js (Service Account)
+        ▼
+final-project/data-raw/LBS_DIY_66871HA.geojson   (lokal only, gitignored)
+        │  scripts/build-data.mjs (npm run build:data)
+        ▼
+final-project/public/data/generated/
+        ├── lbs-<slug>.geojson        → dikonsumsi peta (geometri + WADMKC + _fid)
+        ├── stats-lbs-<slug>.json     → dikonsumsi panel statistik & grafik
+        └── attrs-lbs-<slug>.json     → dikonsumsi popup detail bidang (lazy-load)
+```
+
+`build-data.mjs` juga menghitung ulang luas tiap bidang dari geometri (bukan dari field `Shape_Area` sumber) dengan mereproyeksikan koordinat ke **EPSG:32749 (UTM 49S)** terlebih dahulu, agar hasil luas akurat secara metrik meskipun peta tetap disajikan dalam EPSG:4326.
+
+Slug kabupaten yang dipakai di penamaan file: `bantul`, `gunungkidul`, `kulon-progo`, `sleman`, `yogyakarta`.
+
+---
+
+## Prasyarat
+
+- **Node.js** ≥ 18 (CI memakai Node 20)
+- **npm** (terpasang bersama Node.js)
+- Untuk build data lokal: berkas geojson mentah `final-project/data-raw/LBS_DIY_66871HA.geojson`, **atau** kredensial Google Drive Service Account untuk mengunduhnya lewat `google-drive-integration/download-geojson.js` (lihat [Konfigurasi](#konfigurasi)).
+
+---
+
+## Instalasi
+
+```bash
+# 1. Clone repository
+git clone https://github.com/<username>/Final-Project_MAPID-Academy.git
+cd Final-Project_MAPID-Academy
+
+# 2. Install dependency aplikasi utama
+cd final-project
+npm install
+```
+
+Jika Anda juga perlu mengunduh ulang data mentah dari Google Drive secara lokal:
+
+```bash
+cd ../google-drive-integration
+npm install
+```
+
+---
+
+## Konfigurasi
+
+Aplikasi frontend (`final-project/`) **tidak memerlukan environment variable** untuk dijalankan — seluruh path data bersifat statis relatif terhadap `import.meta.env.BASE_URL`.
+
+Konfigurasi hanya diperlukan untuk **pipeline pengambilan data mentah** (`google-drive-integration/`), baik secara lokal maupun di CI:
+
+| Variabel / Berkas | Digunakan di | Keterangan |
+|---|---|---|
+| `google-drive-integration/credentials.json` | `download-geojson.js` | Kredensial Service Account Google (field wajib: `client_email`, `private_key`, `type: "service_account"`). **Jangan pernah di-commit** — sudah masuk `.gitignore`. |
+| `GDRIVE_CREDENTIALS_JSON` (GitHub Secret) | `.github/workflows/deploy.yml` | Isi penuh `credentials.json`, ditulis ke file saat CI berjalan lalu dihapus setelah dipakai. |
+| `GDRIVE_FILE_ID` (opsional, GitHub Secret / env) | `download-geojson.js` | ID file geojson di Google Drive. Punya default hardcoded di kode bila tidak di-set. |
+
+> Placeholder — belum bisa dipastikan dari kode: cara memperoleh/membuat Service Account dan file `LBS_DIY_66871HA.geojson` sumber (di luar cakupan repo ini, kemungkinan dikelola manual oleh pemilik proyek di Google Drive).
+
+Jika berkas mentah **tidak tersedia** (baik `data-raw/` maupun kredensial Drive), `npm run build:data` tidak akan gagal — ia hanya mencetak pesan peringatan dan melewati proses generate, sehingga `npm run dev`/`npm run build` tetap bisa berjalan (halaman peta kerja hanya tidak akan memiliki data poligon).
+
+---
+
+## Cara Menjalankan
+
+Seluruh perintah dijalankan dari dalam folder `final-project/`.
+
+```bash
+# Development server (hot reload)
+npm run dev
+```
+
+```bash
+# Build produksi (output ke final-project/dist/)
+npm run build
+```
+
+```bash
+# Preview hasil build produksi secara lokal
+npm run preview
+```
+
+Setiap perintah `dev`/`build` otomatis menjalankan `npm run build:data` lebih dulu (lewat hook `predev`/`prebuild`) untuk memastikan `public/data/generated/` selalu up-to-date terhadap `data-raw/` sebelum server/bundel dijalankan.
+
+Halaman yang tersedia setelah server berjalan:
+
+| Halaman | URL (dev) |
 |---|---|
-| Manajemen Geometri | Add geometry (draw), edit geometry langsung di peta |
-| Peta & Interaksi | Layer control, basemap Google Satellite, pop-up informasi interaktif dari attribute table |
-| Analisis & Pencarian | Pengukuran jarak & luasan, search bar (geocoding/attribute search) |
-| Data & LBS | Live tracking real-time, manajemen data spasial statis, upload & export (GeoJSON, SHP, KML) |
-| Output | Print/cetak peta |
+| Landing / peta wilayah DIY | `/` |
+| Peta kerja Kabupaten Sleman | `/peta-kerja-sleman.html` |
+| Peta kerja Kabupaten Bantul | `/peta-kerja-bantul.html` |
+| Peta kerja Kabupaten Kulon Progo | `/peta-kerja-kulon-progo.html` |
+| Peta kerja Kabupaten Gunungkidul | `/peta-kerja-gunung-kidul.html` |
+| Peta kerja Kota Yogyakarta | `/peta-kerja-yogyakarta.html` |
+
+> Alias URL pendek di atas (mis. `/peta-kerja-sleman.html`) hanya berlaku di **dev server** (lihat plugin kustom di `vite.config.js`). Pada hasil build statis, path sebenarnya mengikuti struktur folder sumber, mis. `/src/map/kab_sleman/peta-kerja-sleman.html`.
+
+### Testing
+
+Belum ada automated test suite (unit/integration/e2e) di repository ini saat ini.
 
 ---
 
-## 2. Rekomendasi Tech Stack (Open-Source)
+## Panduan Step-by-Step
 
-| Layer | Teknologi | Alasan |
-|---|---|---|
-| Database | **PostgreSQL + PostGIS** | Standar de-facto spatial DB, mendukung spatial index (GiST), operasi ST_* untuk analisis geometri |
-| Map Server / OGC Service | **GeoServer** (atau pg_tileserv/Martin untuk vector tile ringan) | Serving WMS/WFS/WMTS, mendukung SLD styling, terintegrasi native dengan PostGIS |
-| Backend Framework | **Node.js (NestJS/Express)** atau **Python (FastAPI/Django + GeoDjango)** | REST/GeoJSON API, mudah integrasi WebSocket untuk real-time |
-| Realtime Messaging | **WebSocket (Socket.IO / native ws)** + **MQTT (Mosquitto)** untuk device IoT/GPS tracker | Live tracking rendah-latensi, MQTT cocok untuk perangkat LBS terbatas daya/bandwidth |
-| Caching / Pub-Sub | **Redis** (Pub/Sub + Geo commands) | Broadcast posisi real-time ke banyak client, cache hasil query berat |
-| Frontend Framework | **React (Vite) + TypeScript** | Ekosistem luas, kemudahan state management untuk peta interaktif |
-| Peta Client | **OpenLayers** | Mendukung native basemap XYZ (Google Satellite), drawing/editing (`ol/interaction/Draw`, `Modify`, `Snap`), measurement, print |
-| State Management | **Zustand / Redux Toolkit** | Sinkronisasi state layer, geometri aktif, hasil pencarian |
-| Styling/UI | **Tailwind CSS + shadcn/ui** | Percepatan UI komponen (panel layer, popup, toolbar) |
-| Autentikasi | **JWT + Role-Based Access Control (RBAC)** | Kontrol akses per layer/data LBS |
-| Container & Orkestrasi | **Docker Compose** (dev), **Kubernetes** (opsional produksi) | Konsistensi environment PostGIS/GeoServer/Backend/Frontend |
+Checklist konkret dari clone sampai peta tampil di browser. Centang tiap item sebagai progress tracker.
 
----
+### A. Setup awal
 
-## 3. Fase 1 — Arsitektur Sistem & Database
+- [ ] Clone repository: `git clone https://github.com/<username>/Final-Project_MAPID-Academy.git`
+- [ ] Masuk ke folder aplikasi: `cd Final-Project_MAPID-Academy/final-project`
+- [ ] Install dependency: `npm install`
+- [ ] Pastikan versi Node.js ≥ 18: `node -v`
 
-### 3.1 Desain Arsitektur
+### B. Menyiapkan data mentah
 
-```
-[Perangkat LBS/GPS] --MQTT/HTTP--> [Ingestion Service] --> [Redis Pub/Sub] --> [WebSocket Gateway] --> [Frontend (OpenLayers)]
-                                          |
-                                          v
-                                   [PostgreSQL/PostGIS] <--WFS/WMS-- [GeoServer]
-                                          ^
-                                          |
-                              [Backend REST API (Upload/Export/CRUD)]
-```
+Pipeline peta butuh berkas `final-project/data-raw/LBS_DIY_66871HA.geojson` (tidak ikut di-commit karena ukurannya ~301 MB). Pilih salah satu jalur berikut:
 
-- **Data plane real-time**: perangkat mengirim posisi (lat/lon, timestamp, device_id) via MQTT/HTTP → disimpan ke tabel `tracking_history` (PostGIS `geometry(Point,4326)`) → dipublish ke Redis channel → diteruskan ke client via WebSocket.
-- **Data plane statis**: fitur/geometri (polygon, line, point) dikelola CRUD lewat REST API, disimpan di tabel spasial dengan kolom `geom geometry(Geometry,4326)`.
+- [ ] **Jalur A — sudah punya berkas geojson mentah**: salin manual ke `final-project/data-raw/LBS_DIY_66871HA.geojson`.
+- [ ] **Jalur B — unduh dari Google Drive**:
+  - [ ] `cd ../google-drive-integration && npm install`
+  - [ ] Taruh kredensial Service Account di `google-drive-integration/credentials.json` (lihat [Konfigurasi](#konfigurasi))
+  - [ ] (Opsional) set `GDRIVE_FILE_ID` bila berbeda dari default di kode
+  - [ ] Jalankan `node download-geojson.js` — hasil otomatis tersimpan ke `final-project/data-raw/LBS_DIY_66871HA.geojson`
+- [ ] **Jalur C — tanpa data mentah**: lewati langkah ini. `npm run build:data` akan mencetak peringatan dan dilewati, aplikasi tetap bisa dijalankan tapi peta kabupaten tidak akan memiliki poligon.
 
-### 3.2 Skema Database (PostGIS)
+### C. Menjalankan aplikasi
 
-```sql
--- Data spasial statis (feature layer)
-CREATE TABLE spatial_features (
-    id SERIAL PRIMARY KEY,
-    layer_id INT REFERENCES layers(id),
-    name VARCHAR(255),
-    attributes JSONB,                 -- attribute table dinamis untuk popup
-    geom GEOMETRY(Geometry, 4326) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX idx_spatial_features_geom ON spatial_features USING GIST (geom);
+- [ ] Kembali ke folder `final-project/`
+- [ ] (Opsional, manual) Generate data per kabupaten: `npm run build:data` — otomatis dijalankan juga oleh langkah berikutnya
+- [ ] Jalankan dev server: `npm run dev`
+- [ ] Buka `http://localhost:5173/` di browser, pastikan landing page peta wilayah DIY tampil
+- [ ] Klik salah satu wilayah (mis. Sleman) dan pastikan halaman peta kerja terbuka dengan poligon, statistik, dan grafik tampil (jika data mentah tersedia di langkah B)
+- [ ] **Checkpoint**: coba filter kapanewon/kecamatan, klik salah satu bidang untuk memastikan popup detail atribut muncul, dan uji switch basemap
 
--- Device LBS real-time
-CREATE TABLE devices (
-    id SERIAL PRIMARY KEY,
-    device_code VARCHAR(64) UNIQUE,
-    last_position GEOMETRY(Point, 4326),
-    last_seen TIMESTAMPTZ
-);
+### D. Build & preview produksi
 
-CREATE TABLE tracking_history (
-    id BIGSERIAL PRIMARY KEY,
-    device_id INT REFERENCES devices(id),
-    position GEOMETRY(Point, 4326) NOT NULL,
-    speed FLOAT,
-    recorded_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX idx_tracking_position ON tracking_history USING GIST (position);
-CREATE INDEX idx_tracking_device_time ON tracking_history (device_id, recorded_at DESC);
+- [ ] Jalankan `npm run build` — otomatis menjalankan `build:data` lebih dulu, output ke `final-project/dist/`
+- [ ] Jalankan `npm run preview` untuk menguji hasil build secara lokal
+- [ ] **Checkpoint**: pastikan seluruh 5 halaman peta kerja dan landing page berfungsi sama seperti saat `npm run dev`
 
--- Manajemen layer
-CREATE TABLE layers (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
-    geometry_type VARCHAR(50),        -- Point / LineString / Polygon
-    style JSONB,
-    is_active BOOLEAN DEFAULT true
-);
-```
+### E. Deploy
 
-**Catatan desain**: gunakan `attributes JSONB` agar attribute table fleksibel per layer tanpa migrasi skema, sekaligus tetap bisa di-index dengan GIN jika perlu query by attribute.
-
-### 3.3 Deliverable Fase 1
-- ERD & skema PostGIS final
-- Docker Compose: `postgres+postgis`, `geoserver`, `redis`, `mosquitto`
-- Workspace & datastore GeoServer terhubung ke PostGIS
+- [ ] Pastikan GitHub Secrets `GDRIVE_CREDENTIALS_JSON` dan `GDRIVE_FILE_ID` sudah diset di repository (Settings → Secrets and variables → Actions)
+- [ ] Push perubahan ke branch `main` (atau jalankan workflow manual via tab Actions → "Deploy final-project to GitHub Pages" → Run workflow)
+- [ ] Pantau job `build` di GitHub Actions hingga selesai tanpa error
+- [ ] **Checkpoint akhir**: buka URL GitHub Pages hasil deploy, pastikan landing page dan kelima halaman peta kerja dapat diakses
 
 ---
 
-## 4. Fase 2 — Pengembangan Backend
+## Deployment (CI/CD)
 
-### 4.1 REST API (CRUD & Query Spasial)
+Deploy berjalan otomatis lewat **GitHub Actions** (`.github/workflows/deploy.yml`) setiap kali ada push ke branch `main` yang menyentuh `final-project/**`, `google-drive-integration/**`, atau workflow itu sendiri (bisa juga dipicu manual via `workflow_dispatch`):
 
-| Endpoint | Fungsi | Implementasi Spasial |
-|---|---|---|
-| `GET /layers/:id/features` | Ambil fitur sebagai GeoJSON FeatureCollection | `ST_AsGeoJSON`, bbox filter via `ST_Intersects` |
-| `POST /layers/:id/features` | Simpan geometri baru (hasil drawing) | Validasi `ST_IsValid`, simpan `ST_GeomFromGeoJSON` |
-| `PUT /features/:id` | Update geometri hasil editing | `ST_GeomFromGeoJSON` + update `updated_at` |
-| `GET /search?q=` | Pencarian atribut/lokasi | `ILIKE` pada JSONB attributes + geocoding eksternal (Nominatim) |
-| `POST /features/upload` | Upload SHP/KML/GeoJSON | Parsing server-side (lihat 4.2) |
-| `GET /layers/:id/export?format=` | Export GeoJSON/SHP/KML | Konversi via GDAL/OGR |
+1. Install dependency `google-drive-integration`.
+2. Tulis kredensial Service Account dari secret `GDRIVE_CREDENTIALS_JSON`.
+3. Unduh geojson mentah dari Google Drive (`download-geojson.js`).
+4. Hapus kredensial dari runner.
+5. Install dependency `final-project` lalu `npm run build` (otomatis menjalankan `build:data`).
+6. Upload `final-project/dist` sebagai Pages artifact dan deploy ke **GitHub Pages**.
 
-### 4.2 Upload & Export Multi-Format
-
-- **Parsing Upload**:
-  - GeoJSON → parse native (JSON.parse + validasi schema GeoJSON).
-  - Shapefile (.shp/.dbf/.shx/.prj, biasanya dalam .zip) → gunakan **GDAL/OGR** (`ogr2ogr`) di backend atau library **shpjs** untuk parsing ringan; simpan hasil sebagai GeoJSON sebelum insert ke PostGIS.
-  - KML → parsing via **GDAL/OGR** (`ogr2ogr -f GeoJSON`) atau library `@tmcw/togeojson`.
-  - Reprojection otomatis ke `EPSG:4326` menggunakan `ST_Transform` bila file sumber memakai CRS lain (dibaca dari `.prj`).
-- **Export**: gunakan **GDAL/OGR** (`ogr2ogr`) sebagai satu titik konversi universal — PostGIS → GeoJSON/SHP/KML — dijalankan sebagai child-process terkontrol di backend, hasil dikirim sebagai file download (SHP di-zip otomatis karena multi-file).
-
-> Alasan memilih GDAL/OGR: satu tool tervalidasi industri untuk seluruh matriks format spasial, menghindari maintenance banyak parser custom.
-
-### 4.3 Real-time LBS Service
-
-- **Ingestion**: endpoint MQTT topic `devices/{device_id}/position` (untuk perangkat GPS/tracker) dan/atau REST `POST /tracking/ping` (untuk klien mobile/web).
-- **Processing**: setiap posisi masuk → update `devices.last_position` → insert `tracking_history` → publish ke **Redis Pub/Sub** channel `tracking:{device_id}`.
-- **Delivery**: **WebSocket Gateway** (Socket.IO) subscribe Redis channel, broadcast ke client yang sedang membuka peta dengan layer tracking aktif. Gunakan **room per device/area** agar tidak broadcast global (efisiensi bandwidth).
-- **Geofencing (opsional lanjutan)**: `ST_Contains`/`ST_DWithin` untuk trigger alert saat device masuk/keluar area tertentu.
-
-### 4.4 Deliverable Fase 2
-- REST API terdokumentasi (OpenAPI/Swagger)
-- WebSocket gateway + Redis Pub/Sub berjalan
-- Modul upload/export teruji untuk GeoJSON, SHP, KML
+> Placeholder — belum bisa dipastikan dari kode: URL GitHub Pages hasil deploy (tergantung nama repo/organisasi saat workflow dijalankan).
 
 ---
 
-## 5. Fase 3 — Pengembangan Frontend
+## Kontribusi
 
-### 5.1 Peta Dasar & Layer Control
+Proyek ini merupakan tugas akhir individu untuk MAPID Academy Bootcamp WebGIS. Kontribusi eksternal tidak secara aktif diharapkan, namun bila Anda ingin mengajukan perbaikan:
 
-- **OpenLayers** `Map` + `View` sebagai kanvas utama.
-- Basemap **Google Satellite**: tambahkan sebagai `TileLayer` dengan `XYZ` source, URL pola `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}` (perhatikan ToS Google — untuk produksi disarankan pakai Google Maps Platform API resmi bila skala besar).
-- **Layer Control**: komponen React custom (checkbox list + opacity slider) yang toggle `layer.setVisible()` — bukan plugin bawaan OL, dibangun di atas `ol/layer/Group` agar mudah dikelola per kategori (basemap vs data layer).
-
-### 5.2 Manajemen Geometri (Draw & Edit)
-
-- Modul `ol/interaction/Draw` untuk menggambar Point/LineString/Polygon baru → hasil geometry dikirim ke `POST /features`.
-- Modul `ol/interaction/Modify` + `ol/interaction/Snap` untuk editing vertex geometri existing, dengan `ol/interaction/Select` untuk memilih fitur target.
-- Layer sumber menggunakan `ol/source/Vector` yang di-sync dengan state React (Zustand) agar toolbar (Save/Cancel/Delete) reaktif terhadap perubahan geometri.
-
-### 5.3 Pop-up Informasi Interaktif
-
-- Event `map.on('click', ...)` → `map.forEachFeatureAtPixel()` untuk deteksi fitur yang diklik.
-- Render popup menggunakan `ol/Overlay` yang di-attach ke DOM element React (portal), sehingga isi popup (attribute table) dapat memakai komponen React biasa — mudah dibuat responsif dengan Tailwind.
-- Data attribute diambil dari properti `feature.getProperties()` (hasil parsing kolom `attributes JSONB`), ditampilkan sebagai tabel key-value dinamis.
-
-### 5.4 Alat Analisis & Pencarian
-
-- **Pengukuran**: `ol/interaction/Draw` dengan mode `LineString`/`Polygon` + listener `geometrychange` yang menghitung `getLength()`/`getArea()` dari `ol/sphere` (formula geodesic agar akurat untuk EPSG:4326).
-- **Search Bar**: debounced input → query ke `GET /search` (attribute search internal) sekaligus opsional integrasi **Nominatim (OpenStreetMap)** untuk pencarian lokasi/alamat umum → hasil di-highlight & `view.animate()` ke lokasi terpilih.
-
-### 5.5 Print Map
-
-- Library **`ol-ext`** (fitur `print` control) atau kombinasi `map.once('rendercomplete')` + `html2canvas`/`jsPDF` untuk export tampilan peta (termasuk legend & scale bar) ke PDF/PNG sesuai layout kertas (A4 landscape/portrait).
-
-### 5.6 Deliverable Fase 3
-- SPA React + OpenLayers dengan seluruh interaksi peta berfungsi
-- UI upload/export file (drag-drop) terhubung ke backend
-- Panel layer control, popup, toolbar ukur, search bar, tombol print
+1. Fork repository ini.
+2. Buat branch baru (`git checkout -b perbaikan/nama-perubahan`).
+3. Commit perubahan dengan pesan yang jelas.
+4. Ajukan Pull Request dengan deskripsi perubahan dan alasannya.
 
 ---
 
-## 6. Fase 4 — Integrasi LBS (Real-Time Tracking)
+## Lisensi
 
-### 6.1 Arsitektur Jaringan Real-Time
-
-```
-Device/GPS Tracker --(MQTT publish)--> Mosquitto Broker
-                                              |
-                                    Backend MQTT Subscriber
-                                              |
-                                    PostGIS (tracking_history) + Redis Pub/Sub
-                                              |
-                                    WebSocket Gateway (Socket.IO)
-                                              |
-                                    Frontend: ol/source/Vector (live update)
-```
-
-### 6.2 Implementasi Frontend Live Tracking
-
-- Client subscribe WebSocket channel per device/area saat layer "Live Tracking" diaktifkan.
-- Setiap event posisi baru → update `Feature` pada `ol/source/Vector` secara in-place (`feature.getGeometry().setCoordinates()`) — **hindari re-render seluruh layer** demi performa saat banyak device aktif.
-- Opsional: animasi interpolasi posisi antar update (linear tween) agar pergerakan marker terlihat halus, bukan "meloncat".
-- Riwayat pergerakan (trail) dapat direkonstruksi dari `tracking_history` via `ST_MakeLine` untuk ditampilkan sebagai polyline.
-
-### 6.3 Skalabilitas & Keandalan
-
-- Redis Pub/Sub memungkinkan horizontal scaling backend (multi-instance WebSocket gateway tetap sinkron).
-- MQTT QoS 1 untuk menjamin data posisi tidak hilang saat koneksi perangkat tidak stabil.
-- Terapkan **throttling** pengiriman posisi (mis. maks 1 update/detik per device) untuk menjaga beban DB & bandwidth.
-
-### 6.4 Deliverable Fase 4
-- Simulator device (script pengirim posisi dummy via MQTT) untuk testing
-- Live tracking berjalan end-to-end di peta dengan latensi rendah
-- Riwayat trail tracking dapat di-query dan ditampilkan
+Didistribusikan di bawah [Lisensi MIT](LICENSE). Lihat berkas `LICENSE` untuk teks lengkap.
 
 ---
 
-## 7. Ringkasan Alur Kerja Pengembangan (Timeline Acuan)
+## Kontak / Author
 
-1. **Fase 1 — Arsitektur & Database**: setup Docker environment, desain skema PostGIS, konfigurasi GeoServer.
-2. **Fase 2 — Backend**: REST API CRUD spasial, modul upload/export (GDAL/OGR), WebSocket + MQTT untuk real-time.
-3. **Fase 3 — Frontend**: peta OpenLayers, layer control, draw/edit geometry, popup, ukur, search, print.
-4. **Fase 4 — Integrasi LBS**: hubungkan pipeline real-time end-to-end, uji skala & latensi, finalisasi trail history.
-
-Setiap fase disarankan diakhiri dengan checkpoint pengujian (unit test backend, integration test API, manual test UI) sebelum lanjut ke fase berikutnya.
-
----
-
-## 8. Step-by-Step Implementasi
-
-Checklist eksekusi konkret, urut, dan dapat langsung dikerjakan. Centang tiap item sebagai progress tracker.
-
-### 8.1 Fase 1 — Arsitektur Sistem & Database
-
-- [ ] Inisialisasi repo: pisahkan folder `backend/`, `frontend/`, `infra/` (docker-compose, init-sql).
-- [ ] Tulis `infra/docker-compose.yml` dengan service: `postgis` (image `postgis/postgis`), `geoserver` (image `kartoza/geoserver`), `redis`, `mosquitto`.
-- [ ] Jalankan `docker compose up -d` dan pastikan tiap service healthy (`docker compose ps`).
-- [ ] Buat database & aktifkan extension: `CREATE EXTENSION postgis;`
-- [ ] Buat migration file (mis. pakai Prisma/TypeORM/Alembic) untuk tabel `layers`, `spatial_features`, `devices`, `tracking_history` sesuai skema di bagian 3.2.
-- [ ] Jalankan migration, verifikasi index `GIST` terbentuk (`\d spatial_features` di psql).
-- [ ] Login GeoServer admin, buat **Workspace** baru (mis. `lbs_ws`).
-- [ ] Buat **Store** PostGIS di GeoServer yang connect ke database `postgis` container.
-- [ ] Publish 1 layer uji dari tabel `spatial_features` untuk memastikan koneksi PostGIS ↔ GeoServer berhasil (cek preview WMS di GeoServer).
-- [ ] Seed data dummy (beberapa baris `spatial_features` + 1 `device`) untuk keperluan testing fase berikutnya.
-- [ ] **Checkpoint**: query `ST_AsGeoJSON` langsung di psql mengembalikan GeoJSON valid.
-
-### 8.2 Fase 2 — Pengembangan Backend
-
-- [ ] Inisialisasi project backend (`NestJS` atau `FastAPI`), setup koneksi ke PostGIS (ORM/driver spasial: `TypeORM`+`postgis` atau `GeoAlchemy2`).
-- [ ] Implementasi `GET /layers/:id/features` → return GeoJSON `FeatureCollection` (gunakan `ST_AsGeoJSON` + bbox filter opsional).
-- [ ] Implementasi `POST /layers/:id/features` → terima GeoJSON geometry, validasi `ST_IsValid`, insert.
-- [ ] Implementasi `PUT /features/:id` dan `DELETE /features/:id` untuk mendukung editing/hapus geometri.
-- [ ] Setup validasi input (schema GeoJSON) & error handling standar (400/404/422).
-- [ ] Install **GDAL/OGR** di environment backend (via Docker image `osgeo/gdal` atau binary sistem) — verifikasi `ogr2ogr --version` jalan.
-- [ ] Implementasi `POST /features/upload`: terima file (multipart), deteksi ekstensi (.geojson/.zip berisi .shp/.kml), jalankan `ogr2ogr -f GeoJSON` sebagai child-process, parse hasil, insert ke `spatial_features`.
-- [ ] Uji upload dengan 3 sample file: GeoJSON, SHP (zip), KML — pastikan geometri & attribute tersimpan benar dan CRS ter-reproject ke 4326.
-- [ ] Implementasi `GET /layers/:id/export?format=geojson|shp|kml`: query data, jalankan `ogr2ogr` arah sebaliknya, kirim file (zip untuk SHP).
-- [ ] Setup **Mosquitto** topic subscriber di backend (`devices/+/position`), tulis handler yang update `devices.last_position` + insert `tracking_history`.
-- [ ] Setup **Redis Pub/Sub**: publish posisi baru ke channel `tracking:{device_id}` setelah insert berhasil.
-- [ ] Setup **WebSocket Gateway** (Socket.IO): client join room per `device_id`/area, gateway subscribe Redis dan forward event ke room terkait.
-- [ ] Tulis script simulator device (Node/Python) yang publish posisi dummy ke MQTT tiap 1–2 detik, untuk testing pipeline real-time tanpa hardware.
-- [ ] Implementasi `GET /search?q=` (query JSONB attributes + opsional proxy ke Nominatim).
-- [ ] Dokumentasikan seluruh endpoint di Swagger/OpenAPI.
-- [ ] **Checkpoint**: jalankan simulator, buka WebSocket client (Postman/websocat), pastikan event posisi diterima real-time; test upload/export ketiga format via Postman.
-
-### 8.3 Fase 3 — Pengembangan Frontend
-
-- [ ] Inisialisasi project (`npm create vite@latest` React+TS), install `ol`, `zustand`, `tailwindcss`, `axios`/`socket.io-client`.
-- [ ] Buat komponen `MapView` dasar: inisialisasi `ol/Map` + `ol/View`, tambahkan basemap Google Satellite via `XYZ` source.
-- [ ] Buat komponen `LayerControlPanel`: fetch daftar layer dari backend, render checkbox + opacity slider, hubungkan ke `layer.setVisible()`/`setOpacity()`.
-- [ ] Integrasikan layer data dari GeoServer (WMS/WFS `ol/source/TileWMS` atau `ol/source/Vector` + `ol/format/GeoJSON` via REST API backend).
-- [ ] Implementasi toolbar **Draw**: tombol Point/Line/Polygon → aktifkan `ol/interaction/Draw`, on `drawend` kirim geometry ke `POST /features`.
-- [ ] Implementasi mode **Edit**: aktifkan `ol/interaction/Select` + `Modify` + `Snap`, on `modifyend` kirim update ke `PUT /features/:id`.
-- [ ] Tambahkan tombol Save/Cancel/Delete pada toolbar geometri, sinkronkan dengan state Zustand.
-- [ ] Implementasi **popup**: buat `ol/Overlay`, handler `map.on('click')` + `forEachFeatureAtPixel`, render komponen React `FeaturePopup` menampilkan `attributes` sebagai tabel.
-- [ ] Implementasi **pengukuran**: toolbar Measure Distance/Area menggunakan `Draw` + `ol/sphere getLength/getArea`, tampilkan hasil sebagai tooltip mengikuti kursor.
-- [ ] Implementasi **search bar**: input dengan debounce (300ms), panggil `GET /search`, render dropdown hasil, klik hasil → `view.animate()` ke lokasi & highlight fitur.
-- [ ] Implementasi **upload UI**: drag-drop/file picker (terima .geojson/.zip/.kml), progress indicator, panggil `POST /features/upload`, refresh layer setelah sukses.
-- [ ] Implementasi **export UI**: dropdown pilih layer + format (GeoJSON/SHP/KML), tombol download memanggil `GET /export`.
-- [ ] Implementasi **print map**: tombol Print → capture kanvas peta (`ol-ext` print control atau `html2canvas`) + legend/scale bar, generate PDF (`jsPDF`).
-- [ ] Styling responsif seluruh panel (Tailwind), uji di ukuran layar desktop & tablet.
-- [ ] **Checkpoint**: seluruh interaksi (draw, edit, popup, ukur, search, upload, export, print) diuji manual end-to-end di browser.
-
-### 8.4 Fase 4 — Integrasi LBS (Real-Time Tracking)
-
-- [ ] Buat layer khusus "Live Tracking" di `LayerControlPanel` yang saat diaktifkan melakukan koneksi WebSocket (`socket.io-client`).
-- [ ] Render posisi device awal (`devices.last_position`) sebagai `Feature` di `ol/source/Vector` terpisah dari layer statis.
-- [ ] Implementasi handler event WebSocket: update koordinat `Feature` in-place (bukan re-create layer) setiap ada event posisi baru.
-- [ ] Tambahkan animasi interpolasi pergerakan marker (tween posisi lama → baru selama interval update).
-- [ ] Implementasi layer **trail**: fetch riwayat via endpoint baru `GET /devices/:id/trail` (query `ST_MakeLine` dari `tracking_history`), render sebagai `LineString`.
-- [ ] Uji dengan simulator device dari 8.2 berjalan bersamaan → pastikan marker bergerak real-time di peta tanpa lag signifikan.
-- [ ] Tambahkan indikator status koneksi (connected/disconnected) & auto-reconnect WebSocket di frontend.
-- [ ] Load test dasar: jalankan beberapa simulator device paralel (mis. 20–50 device), amati latensi & beban Redis/DB.
-- [ ] Terapkan throttling publish MQTT (maks 1 update/detik/device) bila diperlukan setelah load test.
-- [ ] **Checkpoint akhir**: demo end-to-end — buka aplikasi, aktifkan layer tracking, jalankan simulator, verifikasi posisi live + trail history tampil benar, lalu uji ulang seluruh fitur Fase 3 berjalan berdampingan dengan tracking aktif (tidak saling mengganggu performa).
-
-### 8.5 Finalisasi
-
-- [ ] Review keamanan: autentikasi JWT di seluruh endpoint CRUD/upload, validasi ukuran & tipe file upload untuk mencegah abuse.
-- [ ] Tulis dokumentasi setup (`.env.example`, cara `docker compose up`, cara migrasi, cara menjalankan simulator).
-- [ ] Deploy staging (opsional): build image Docker untuk backend & frontend, deploy via Docker Compose/Kubernetes.
-- [ ] Persiapan demo/presentasi tugas akhir: siapkan skenario data + skrip demo fitur sesuai daftar di bagian 1.
+**Alvito Krishna Balapradhana**
+Tugas Akhir — MAPID Academy Bootcamp WebGIS
