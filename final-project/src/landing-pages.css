@@ -181,10 +181,6 @@ svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visibl
 }
 .footer .org{font-size:12px; font-weight:600; line-height:1.35; color:rgba(233,245,242,.7)}
 .footer .org em{display:block; font-style:normal; font-weight:400; font-size:11px; color:var(--ink-dim)}
-.footer .sep{width:1px; height:30px;
-  background:linear-gradient(180deg,transparent,rgba(134,232,211,.35),transparent)}
-.footer .note{font-family:var(--font-mono); font-size:9.5px; letter-spacing:.12em;
-  text-transform:uppercase; color:rgba(143,179,174,.5)}
 
 @media (max-width:900px){
   .page{padding:40px 24px 0}
@@ -194,7 +190,6 @@ svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visibl
   .readout{position:static; opacity:1; transform:none; margin-bottom:12px; align-items:flex-start}
   .frame{display:none}
   .footer{flex-direction:column; gap:8px; margin-top:28px}
-  .footer .sep{display:none}
 }
 @media (max-width:520px){
   .page{padding:28px 16px 0}
