@@ -9,12 +9,14 @@ import WILAYAH_SVG_URL from './prov-diy-assets/diy-wilayah.svg';
 const GEOJSON_URL = `${import.meta.env.BASE_URL}data/LBS_DIY_66871HA.geojson`;
 
 // Peta kerja per kabupaten/kota (dibuat di src/map/**), dipetakan dari id region pada SVG.
+// Path harus sesuai struktur hasil build Vite (dist/src/map/**/*.html) — alias URL pendek
+// (mis. /peta-kerja-sleman.html) hanya berlaku di dev server, tidak ada di build statis.
 const REGION_LINKS = {
-  sleman: `${import.meta.env.BASE_URL}peta-kerja-sleman.html`,
-  kulonprogo: `${import.meta.env.BASE_URL}peta-kerja-kulon-progo.html`,
-  bantul: `${import.meta.env.BASE_URL}peta-kerja-bantul.html`,
-  gunungkidul: `${import.meta.env.BASE_URL}peta-kerja-gunung-kidul.html`,
-  kotayogya: `${import.meta.env.BASE_URL}peta-kerja-yogyakarta.html`
+  sleman: `${import.meta.env.BASE_URL}src/map/kab_sleman/peta-kerja-sleman.html`,
+  kulonprogo: `${import.meta.env.BASE_URL}src/map/kab_kulon-progo/peta-kerja-kulon-progo.html`,
+  bantul: `${import.meta.env.BASE_URL}src/map/kab-bantul/peta-kerja-bantul.html`,
+  gunungkidul: `${import.meta.env.BASE_URL}src/map/kab_gunung-kidul/peta-kerja-gunung-kidul.html`,
+  kotayogya: `${import.meta.env.BASE_URL}src/map/kota_yogyakarta/peta-kerja-yogyakarta.html`
 };
 
 // Id region pada SVG dipetakan ke nilai WADMKK di GeoJSON LBS, untuk agregasi luas & jumlah bidang.
@@ -109,8 +111,8 @@ function activate(el, group, regions) {
   group.classList.add('dimmed');
   regions.forEach(r => r.classList.toggle('is-active', r === el));
   roName.textContent = el.dataset.name;
-  roStat.textContent = el.dataset.luas;
-  roNote.textContent = el.dataset.stat;
+  roStat.textContent = el.dataset.luas || 'Memuat data…';
+  roNote.textContent = el.dataset.stat || '';
   readout.classList.add('show');
   metaSel.textContent = el.dataset.name;
 }
@@ -130,33 +132,46 @@ function openRegion(el) {
   if (url) window.location.href = url;
 }
 
-Promise.all([
-  fetch(WILAYAH_SVG_URL).then(res => res.text()),
-  fetch(GEOJSON_URL).then(res => res.json())
-]).then(([svgMarkup, geojson]) => {
-  mapHolder.innerHTML = svgMarkup;
+// Peta SVG dirender & bisa langsung diklik begitu SVG-nya saja selesai dimuat
+// (kecil, instan) — TIDAK menunggu geojson besar (ratusan MB) selesai diunduh.
+// Statistik luas/jumlah bidang per wilayah baru dilengkapi belakangan, setelah
+// geojson-nya selesai di-fetch di background.
+fetch(WILAYAH_SVG_URL)
+  .then(res => res.text())
+  .then(svgMarkup => {
+    mapHolder.innerHTML = svgMarkup;
 
-  const svg     = mapHolder.querySelector('svg.map');
-  const group   = mapHolder.querySelector('#regions');
-  const regions = mapHolder.querySelectorAll('.region');
+    const svg     = mapHolder.querySelector('svg.map');
+    const group   = mapHolder.querySelector('#regions');
+    const regions = mapHolder.querySelectorAll('.region');
 
-  const byWadmkk = aggregateByWadmkk(geojson.features);
-
-  regions.forEach(el => {
-    const stat = byWadmkk[REGION_WADMKK[el.id]];
-    if (stat) {
-      el.dataset.luas = `${fmtHa(stat.luas)} Ha LBS`;
-      el.dataset.stat = `${stat.kecamatan.size} kapanewon · ${fmtInt(stat.count)} bidang`;
-    }
-
-    el.addEventListener('mouseenter', () => activate(el, group, regions));
-    el.addEventListener('focus',      () => activate(el, group, regions));
-    el.addEventListener('blur',       () => clear(group, regions));
-    el.addEventListener('click',      () => openRegion(el));
-    el.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRegion(el); }
+    regions.forEach(el => {
+      el.addEventListener('mouseenter', () => activate(el, group, regions));
+      el.addEventListener('focus',      () => activate(el, group, regions));
+      el.addEventListener('blur',       () => clear(group, regions));
+      el.addEventListener('click',      () => openRegion(el));
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRegion(el); }
+      });
     });
-  });
 
-  svg.addEventListener('mouseleave', () => clear(group, regions));
-});
+    svg.addEventListener('mouseleave', () => clear(group, regions));
+
+    fetch(GEOJSON_URL)
+      .then(res => res.json())
+      .then(geojson => {
+        const byWadmkk = aggregateByWadmkk(geojson.features);
+        regions.forEach(el => {
+          const stat = byWadmkk[REGION_WADMKK[el.id]];
+          if (stat) {
+            el.dataset.luas = `${fmtHa(stat.luas)} Ha LBS`;
+            el.dataset.stat = `${stat.kecamatan.size} kapanewon · ${fmtInt(stat.count)} bidang`;
+          }
+        });
+      })
+      .catch(err => console.error('Gagal memuat data LBS untuk statistik wilayah:', err));
+  })
+  .catch(err => {
+    console.error('Gagal memuat peta wilayah:', err);
+    mapHolder.innerHTML = '<p style="color:#f88">Gagal memuat peta wilayah.</p>';
+  });
