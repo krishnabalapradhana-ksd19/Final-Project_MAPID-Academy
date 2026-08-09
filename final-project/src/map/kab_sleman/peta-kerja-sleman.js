@@ -7,6 +7,6 @@ createLbsPage({
   kabLabel: 'Kabupaten Sleman',
   logo: slemanLogo,
   logoAlt: 'Logo Kabupaten Sleman',
-  center: [110.375, -7.68], // sekitar Kabupaten Sleman
+  center: [110.375, -7.68],
   zoom: 11
 });

@@ -6,9 +6,6 @@ import path from 'path';
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const mapDir = path.join(rootDir, 'src/map');
 
-// Kumpulkan semua halaman peta-kerja-*.html di src/map/**, supaya bisa
-// diakses lewat URL pendek di root (mis. /peta-kerja-sleman.html) baik
-// saat dev maupun setelah build, tanpa perlu mengetik path folder kabupatennya.
 function collectPages(dir) {
   const pages = new Map();
   const walk = (current) => {
@@ -25,8 +22,6 @@ function collectPages(dir) {
   return pages;
 }
 
-// Plugin dev-server: rewrite request "/peta-kerja-sleman.html" (root)
-// ke file aslinya di "src/map/kab_sleman/peta-kerja-sleman.html".
 function pageAliasPlugin(pages) {
   return {
     name: 'page-alias',
@@ -49,8 +44,6 @@ const pageInputs = Object.fromEntries(
 );
 
 export default defineConfig({
-  // Situs di-deploy ke GitHub Pages di bawah subpath repo
-  // (https://<user>.github.io/Final-Project_MAPID-Academy/), bukan di root domain.
   base: '/Final-Project_MAPID-Academy/',
   plugins: [pageAliasPlugin(pages)],
   build: {

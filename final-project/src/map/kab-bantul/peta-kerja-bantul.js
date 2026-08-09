@@ -7,6 +7,6 @@ createLbsPage({
   kabLabel: 'Kabupaten Bantul',
   logo: kabLogo,
   logoAlt: 'Logo Kabupaten Bantul',
-  center: [110.3669, -7.8984], // sekitar Kabupaten Bantul
+  center: [110.3669, -7.8984],
   zoom: 11
 });

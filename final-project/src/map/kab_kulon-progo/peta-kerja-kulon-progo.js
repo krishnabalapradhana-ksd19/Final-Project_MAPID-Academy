@@ -7,6 +7,6 @@ createLbsPage({
   kabLabel: 'Kabupaten Kulon Progo',
   logo: kabLogo,
   logoAlt: 'Logo Kabupaten Kulon Progo',
-  center: [110.1476, -7.8144], // sekitar Kabupaten Kulon Progo
+  center: [110.1476, -7.8144],
   zoom: 11
 });

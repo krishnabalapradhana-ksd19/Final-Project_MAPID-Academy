@@ -1,5 +1,3 @@
-// Konfigurasi basemap dipakai identik di kelima halaman peta-kerja kabupaten/kota
-// — dipusatkan di sini supaya tidak diduplikasi 5x.
 export const BASEMAPS = {
   google: {
     label: 'Google Maps',

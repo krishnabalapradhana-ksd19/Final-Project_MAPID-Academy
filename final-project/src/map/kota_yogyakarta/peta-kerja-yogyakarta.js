@@ -7,6 +7,6 @@ createLbsPage({
   kabLabel: 'Kota Yogyakarta',
   logo: kabLogo,
   logoAlt: 'Logo Kota Yogyakarta',
-  center: [110.3761, -7.8079], // sekitar Kota Yogyakarta
+  center: [110.3761, -7.8079],
   zoom: 12
 });

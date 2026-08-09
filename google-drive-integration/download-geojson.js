@@ -2,11 +2,6 @@ const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
 
-// Dipakai oleh GitHub Actions saat build: mengambil geojson besar dari
-// Google Drive (via Service Account) dan menaruhnya di final-project/data-raw/
-// (BUKAN public/data/) karena file itu terlalu besar untuk disimpan di git,
-// dan tidak boleh ikut ter-deploy utuh — scripts/build-data.mjs yang
-// memecahnya jadi file kecil per kabupaten di public/data/generated/.
 const FILE_ID = process.env.GDRIVE_FILE_ID || '1WU1ZCKk6Ua1PUKv5Snmb-i6oSMS50iPn';
 const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
 const OUTPUT_PATH = path.join(
@@ -17,10 +12,6 @@ const OUTPUT_PATH = path.join(
   'LBS_DIY_66871HA.geojson'
 );
 
-// Baca & validasi credentials.json secara eksplisit (bukan lewat keyFile)
-// supaya kalau secret GDRIVE_CREDENTIALS_JSON kosong/rusak, errornya jelas
-// di sini alih-alih muncul sebagai "missing a valid API key" yang membingungkan
-// dari Google Drive API saat auth diam-diam gagal ter-resolve.
 function loadCredentials() {
   if (!fs.existsSync(CREDENTIALS_PATH)) {
     throw new Error(`credentials.json tidak ditemukan di ${CREDENTIALS_PATH}`);

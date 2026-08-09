@@ -1,5 +1,3 @@
-/* ---------- Loading & error state (dipakai bersama di semua halaman peta-kerja) ---------- */
-
 @keyframes lbs-shimmer {
   0% { background-position: -120% 0; }
   100% { background-position: 120% 0; }

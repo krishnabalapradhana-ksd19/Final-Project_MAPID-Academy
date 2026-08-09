@@ -20,7 +20,6 @@ body{
   min-height:100vh; overflow-x:hidden;
 }
 
-/* --- latar batik --- */
 .bg-kawung,.bg-parang{position:fixed; inset:0; pointer-events:none; z-index:0}
 .bg-kawung{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%2386e8d3' stroke-width='1.1'%3E%3Cellipse cx='48' cy='26' rx='13' ry='21'/%3E%3Cellipse cx='48' cy='70' rx='13' ry='21'/%3E%3Cellipse cx='26' cy='48' rx='21' ry='13'/%3E%3Cellipse cx='70' cy='48' rx='21' ry='13'/%3E%3Ccircle cx='48' cy='48' r='2.6'/%3E%3Cellipse cx='0' cy='-22' rx='13' ry='21'/%3E%3Cellipse cx='0' cy='22' rx='13' ry='21'/%3E%3Cellipse cx='-22' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='22' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='96' cy='-22' rx='13' ry='21'/%3E%3Cellipse cx='96' cy='22' rx='13' ry='21'/%3E%3Cellipse cx='74' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='118' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='0' cy='74' rx='13' ry='21'/%3E%3Cellipse cx='0' cy='118' rx='13' ry='21'/%3E%3Cellipse cx='-22' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='22' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='96' cy='74' rx='13' ry='21'/%3E%3Cellipse cx='96' cy='118' rx='13' ry='21'/%3E%3Cellipse cx='74' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='118' cy='96' rx='21' ry='13'/%3E%3C/g%3E%3C/svg%3E");
@@ -35,7 +34,6 @@ body{
   mask-image:radial-gradient(85% 70% at 50% 45%, #000 25%, transparent 100%);
 }
 
-/* --- bingkai + koordinat sudut --- */
 .frame{
   position:fixed; inset:16px; z-index:2; pointer-events:none;
   border:1px solid rgba(134,232,211,.13); border-radius:8px;
@@ -49,7 +47,6 @@ body{
 .frame .bl{bottom:8px; left:14px}
 .frame .br{bottom:8px; right:14px}
 
-/* --- kerangka halaman --- */
 .page{
   position:relative; z-index:1;
   min-height:100vh;
@@ -62,7 +59,6 @@ body{
   max-width:1500px; width:100%; margin:0 auto;
 }
 
-/* --- kolom kiri --- */
 .brand{animation:rise .7s cubic-bezier(.2,.8,.25,1) both}
 @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
@@ -122,7 +118,6 @@ h1 span{display:block; color:var(--mint); font-weight:600}
 }
 .meta b{color:var(--mint); font-weight:500}
 
-/* --- kolom kanan: peta --- */
 .map-col{position:relative; padding-right:8%; animation:rise .7s cubic-bezier(.2,.8,.25,1) .12s both}
 svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visible}
 
@@ -151,7 +146,6 @@ svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visibl
   50%    {filter:drop-shadow(0 10px 18px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(134,232,211,.95))}
 }
 
-/* --- label nama wilayah (selalu terlihat, di-generate dari JS via getBBox) --- */
 .region-label{
   font-family:var(--font-mono); font-size:12px; font-weight:600;
   fill:rgba(233,245,242,.75); text-anchor:middle; dominant-baseline:middle;
@@ -201,7 +195,6 @@ svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visibl
   background:linear-gradient(90deg,transparent,rgba(134,232,211,.45),transparent);
 }
 
-/* --- footer --- */
 .footer{
   margin-top:44px; padding:16px 0 22px;
   border-top:1px solid rgba(134,232,211,.1);

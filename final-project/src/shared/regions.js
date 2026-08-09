@@ -1,13 +1,3 @@
-// Satu sumber kebenaran untuk data 5 kabupaten/kota DIY — dipakai baik oleh
-// scripts/build-data.mjs (Node, build time) maupun src/landing-pages.js
-// (browser). Jangan tambahkan API khusus platform (fs, DOM, dst.) di sini.
-//
-// `slug` dan `svgId` SENGAJA dibiarkan berbeda untuk Kulon Progo & Kota
-// Yogyakarta (bukan diseragamkan) karena keduanya sudah tertanam di tempat
-// yang mahal/berisiko untuk diubah:
-//   - slug   -> nama file data hasil generate (lbs-<slug>.geojson, dst.)
-//               dan dipakai di config 5 halaman peta-kerja-*.js
-//   - svgId  -> id elemen <path id="..."> di prov-diy-assets/diy-wilayah.svg
 export const REGIONS = [
   {
     slug: 'sleman',

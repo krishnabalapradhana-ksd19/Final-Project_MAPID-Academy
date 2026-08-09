@@ -1,5 +1,3 @@
-// Web Worker: unduh + JSON.parse GeoJSON di luar main thread, supaya UI (peta,
-// kartu statistik, chart) tidak pernah freeze walau berkas yang diunduh besar.
 self.onmessage = async (e) => {
   const { url, timeoutMs } = e.data;
   const controller = new AbortController();

@@ -4,10 +4,6 @@ import './lbs-page.css';
 import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './basemaps.js';
 import { fetchJsonWithTimeout, loadGeojsonViaWorker } from './data-loading.js';
 
-// Factory dipakai oleh kelima halaman peta-kerja-<kabupaten>.js — kelimanya
-// sebelumnya adalah salinan hampir identik (hanya nama kabupaten/kecamatan/
-// logo yang beda), jadi logika peta+data dipusatkan di sini supaya perbaikan
-// (loading, error handling, dsb.) berlaku sekali untuk semua kabupaten.
 export function createLbsPage(config) {
   const {
     slug,
@@ -37,8 +33,6 @@ export function createLbsPage(config) {
     );
   };
 
-  // Tata letak halaman dibangun di sini (bukan statis di index.html) supaya
-  // index.html tetap jadi shell minimal dan seluruh UI dikendalikan dari JS.
   function buildLayout() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -180,8 +174,6 @@ export function createLbsPage(config) {
     map.addLayer({ id: 'basemap-layer', type: 'raster', source: 'basemap' }, beforeId);
   }
 
-  // Kontrol MapLibre kustom: tombol basemap ditumpuk di stack bottom-right,
-  // tepat di bawah tombol zoom-out (NavigationControl).
   class BasemapControl {
     onAdd(mapInstance) {
       this._map = mapInstance;
@@ -248,8 +240,6 @@ export function createLbsPage(config) {
     'bottom-right'
   );
 
-  // Kontrol skala angka (representative fraction, mis. "1 : 50.000"),
-  // mendampingi ScaleControl bawaan MapLibre (skala bar) di bottom-left.
   class NumericScaleControl {
     onAdd(mapInstance) {
       this._map = mapInstance;
@@ -284,7 +274,6 @@ export function createLbsPage(config) {
   const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
   const fmtInt = (n) => n.toLocaleString('id-ID');
 
-  // ---------- Status pemuatan poligon (pill di atas peta) ----------
   const statusEl = document.getElementById('map-status');
   const statusText = document.getElementById('map-status-text');
   const statusRetry = document.getElementById('map-status-retry');
@@ -306,7 +295,6 @@ export function createLbsPage(config) {
     statusEl.hidden = true;
   }
 
-  // ---------- Statistik pra-hitung (independen dari poligon peta) ----------
   const panelError = document.getElementById('panel-error');
   const panelErrorText = document.getElementById('panel-error-text');
   const panelErrorRetry = document.getElementById('panel-error-retry');
@@ -370,15 +358,11 @@ export function createLbsPage(config) {
       chip.classList.toggle('active', chip.dataset.kec === kec);
     });
 
-    // setFilter pada layer yang sudah ada — TIDAK memuat ulang / membuat
-    // ulang source, jadi perpindahan filter instan walau poligon besar.
     if (map.getLayer(FILL_LAYER)) {
       map.setFilter(FILL_LAYER, kec ? ['==', ['get', 'WADMKC'], kec] : null);
       map.setFilter(OUTLINE_LAYER, kec ? ['==', ['get', 'WADMKC'], kec] : null);
     }
 
-    // Bounding box dibaca dari statistik pra-hitung (bukan iterasi ulang
-    // seluruh koordinat feature saat klik).
     if (stats) {
       const bbox = kec ? stats.byKecamatan[kec]?.bbox : stats.bbox;
       if (bbox) map.fitBounds(bbox, { padding: 40, duration: 600 });
@@ -412,7 +396,6 @@ export function createLbsPage(config) {
     });
   }
 
-  // Toggle 2D/Globe pakai proyeksi bawaan MapLibre GL (tanpa engine 3D terpisah).
   function setupViewToggle() {
     const row = document.getElementById('view-toggle');
     row.querySelectorAll('button[data-projection]').forEach((btn) => {
@@ -423,7 +406,6 @@ export function createLbsPage(config) {
     });
   }
 
-  // ---------- Statistik: dimuat paralel, TIDAK menunggu poligon ----------
   function loadStats() {
     panelError.hidden = true;
     setStatSkeleton(true);
@@ -443,7 +425,6 @@ export function createLbsPage(config) {
   }
   panelErrorRetry.addEventListener('click', loadStats);
 
-  // ---------- Poligon LBS: worker + timeout + retry, tidak memblokir statistik ----------
   function loadPolygons() {
     showStatus('Memuat poligon LBS…');
     loadGeojsonViaWorker(GEOJSON_URL, { timeoutMs: 25000 })
@@ -455,10 +436,6 @@ export function createLbsPage(config) {
         } else {
           map.addSource(SOURCE_ID, { type: 'geojson', data: geojson });
 
-          // Statistik (yang menetapkan KEC_ORDER/KEC_COLORS) biasanya sudah
-          // datang lebih dulu karena jauh lebih kecil, tapi kalau belum,
-          // urutan kecamatan diturunkan langsung dari geojson (sorting yang
-          // sama seperti saat statistik dibuat) supaya warna tetap konsisten.
           const order = KEC_ORDER.length
             ? KEC_ORDER
             : [...new Set(geojson.features.map((f) => f.properties.WADMKC))].sort();
@@ -492,8 +469,6 @@ export function createLbsPage(config) {
       });
   }
 
-  // Atribut lengkap (semua kolom) dimuat setelah poligon tampil — tidak
-  // memblokir render peta, dipakai hanya saat popup bidang dibuka.
   function loadAttrs() {
     attrsPromise = fetchJsonWithTimeout(ATTRS_URL, { timeoutMs: 30000 }).catch((err) => {
       console.warn(`[lbs-${slug}] Gagal memuat atribut detail:`, err.message);
@@ -501,7 +476,6 @@ export function createLbsPage(config) {
     });
   }
 
-  // Popup berisi seluruh field attribute table saat sebuah bidang di-klik.
   function setupFeaturePopup() {
     const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '320px' });
 
@@ -564,8 +538,6 @@ export function createLbsPage(config) {
       geolocateBtn.setAttribute('aria-label', 'Lokasi Saya');
     }
 
-    // Render bertahap: basemap sudah tampil (style awal), lalu statistik
-    // (kecil, cepat) dan poligon (lebih besar) dimuat PARALEL, tidak berantai.
     loadStats();
     loadPolygons();
   });

@@ -1,12 +1,3 @@
-// Build-time data pipeline: memecah geojson mentah (301 MB, seluruh DIY) jadi
-// satu file kecil per kabupaten + satu file statistik pra-hitung per kabupaten.
-// Dijalankan otomatis lewat npm "pre" hooks (lihat package.json) sebelum
-// `vite dev` / `vite build`, supaya frontend tidak pernah lagi mengunduh &
-// mem-parse file mentah di browser.
-//
-// Kenapa di Node, bukan di browser: 301 MB hanya perlu diproses SEKALI saat
-// build, hasilnya (kecil) yang dikonsumsi berkali-kali oleh pengunjung.
-
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,29 +6,19 @@ import { REGIONS } from '../src/shared/regions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-// Sumber mentah TIDAK diletakkan di public/ (supaya tidak ikut ter-deploy
-// 301 MB-nya) — hanya dipakai saat build untuk menghasilkan file kecil di
-// public/data/generated/. Berkas mentah ini adalah cadangan; jangan dihapus.
 const RAW_PATH = path.join(ROOT, 'data-raw', 'LBS_DIY_66871HA.geojson');
 const OUT_DIR = path.join(ROOT, 'public', 'data', 'generated');
 
-// WGS84 geografis -> UTM 49S (EPSG:32749), satu-satunya proyeksi metrik yang
-// dipakai untuk MENGHITUNG LUAS. Penyajian peta tetap EPSG:4326 (tidak berubah).
 const toUtm49S = proj4('EPSG:4326', '+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs');
 
-// name/slug diturunkan dari src/shared/regions.js (satu sumber kebenaran
-// dipakai bersama landing-pages.js) — name di sini harus persis sama dengan
-// nilai kolom WADMKK di geojson mentah, karenanya dipetakan dari `wadmkk`.
 const KABUPATEN = REGIONS.map((r) => ({ name: r.wadmkk, slug: r.slug }));
 
-const COORD_PRECISION = 6; // ~0.11 m di ekuator, cukup untuk batas persil
+const COORD_PRECISION = 6;
 
 function roundCoord(n) {
   return Math.round(n * 10 ** COORD_PRECISION) / 10 ** COORD_PRECISION;
 }
 
-// Buang dimensi Z (sisa export sumber data, tidak dipakai render 2D) dan
-// pangkas presisi. Bekerja rekursif untuk Polygon/MultiPolygon.
 function cleanCoords(coords) {
   if (typeof coords[0] === 'number') {
     return [roundCoord(coords[0]), roundCoord(coords[1])];
@@ -45,7 +26,6 @@ function cleanCoords(coords) {
   return coords.map(cleanCoords);
 }
 
-// Luas ring poligon (shoelace) dalam meter persegi, pada koordinat yang SUDAH diproyeksikan.
 function ringAreaMeters(ring) {
   let sum = 0;
   for (let i = 0; i < ring.length - 1; i++) {
@@ -57,7 +37,6 @@ function ringAreaMeters(ring) {
 }
 
 function polygonAreaMeters(rings) {
-  // ring pertama = outer, sisanya = lubang (dikurangi)
   return rings.reduce((acc, ring, i) => {
     const projected = ring.map(([lon, lat]) => toUtm49S.forward([lon, lat]));
     const area = ringAreaMeters(projected);
@@ -65,8 +44,6 @@ function polygonAreaMeters(rings) {
   }, 0);
 }
 
-// Luas feature (m²) dihitung dari geometri asli yang diproyeksikan ke UTM 49S —
-// BUKAN dari field Shape_Area sumber, dan bukan dari koordinat derajat mentah.
 function featureAreaMeters(geometry) {
   if (geometry.type === 'Polygon') {
     return polygonAreaMeters(geometry.coordinates);
@@ -120,7 +97,7 @@ function main() {
         '[build-data] Lewati generasi data — pastikan LBS_DIY_66871HA.geojson sudah diunduh ' +
         '(lihat google-drive-integration/download-geojson.js) sebelum build.'
     );
-    process.exitCode = 0; // jangan gagalkan dev/build lokal kalau file mentah belum ada
+    process.exitCode = 0;
     return;
   }
 
@@ -139,14 +116,6 @@ function main() {
   const report = [];
 
   for (const { name, slug } of KABUPATEN) {
-    // Popup detail bidang menampilkan SELURUH kolom atribut (fitur yang sudah
-    // ada, dipertahankan) — tapi 51 kolom itu (banyak berisi teks
-    // musim-tanam M1_26_*/M2_26_*/M3_26_* yang panjang) ternyata JUSTRU lebih
-    // berat (~30 MB) daripada geometrinya sendiri (~20 MB) untuk kabupaten
-    // besar. Jadi keduanya dipisah: file utama hanya bawa properti yang
-    // dipakai render peta (WADMKC untuk warna/filter) + kunci `_fid` untuk
-    // menghubungkan ke atribut lengkap, yang dimuat terpisah & tidak
-    // memblokir tampilnya poligon.
     const rawFeatures = raw.features.filter((f) => f.properties.WADMKK === name);
     const features = rawFeatures.map((f, idx) => ({
       type: 'Feature',
@@ -167,8 +136,6 @@ function main() {
     const kecFeatureIndexes = {};
     kecOrder.forEach((k) => (kecFeatureIndexes[k] = []));
 
-    // Atribut lengkap (semua kolom asli) dipisah dari geometri, diindeks
-    // lewat `_fid` (posisi array) — dipakai popup detail bidang, dimuat lazy.
     const attrs = new Array(features.length);
     const luasM2ByFeature = new Array(features.length);
 

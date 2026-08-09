@@ -4,23 +4,10 @@ import DIY_LOGO from './prov-diy-assets/diy-logo.svg';
 import WILAYAH_SVG_URL from './prov-diy-assets/diy-wilayah.svg';
 import { REGIONS } from './shared/regions.js';
 
-// Geojson besar disajikan lewat public/data/ (diisi saat build oleh GitHub Actions
-// dari Google Drive, lihat google-drive-integration/download-geojson.js), bukan
-// di-bundle langsung karena ukurannya ratusan MB.
 const GEOJSON_URL = `${import.meta.env.BASE_URL}data/LBS_DIY_66871HA.geojson`;
 
-// Region dari src/shared/regions.js, diindeks per id elemen pada SVG wilayah
-// (svgId) — dipakai untuk link peta kerja, nilai WADMKK (agregasi luas &
-// jumlah bidang), dan nama pendek label di atas peta.
-//
-// Path link harus sesuai struktur hasil build Vite (dist/src/map/**/*.html) —
-// alias URL pendek (mis. /peta-kerja-sleman.html) hanya berlaku di dev
-// server, tidak ada di build statis.
 const REGION_BY_SVG_ID = Object.fromEntries(REGIONS.map((r) => [r.svgId, r]));
 
-// Peta ini adalah satu-satunya CTA di halaman, jadi di layar sentuh (tanpa hover)
-// tap pertama hanya menampilkan info wilayah + tombol konfirmasi — bukan langsung
-// pindah halaman — supaya user tidak "tersasar" ke peta kerja karena salah ketuk.
 const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 function buildLayout() {
@@ -39,7 +26,6 @@ function buildLayout() {
     <div class="page">
       <div class="stage">
 
-        <!-- ============ kiri: identitas ============ -->
         <section class="brand">
           <div class="crest">
             <div class="slot"><img src="${MAPID_LOGO}" alt="Logo MAPID"></div>
@@ -55,7 +41,6 @@ function buildLayout() {
           <p class="meta"><b>5</b> Kabupaten / Kota <span aria-hidden="true">·</span> <span id="meta-sel">Pilih wilayah</span></p>
         </section>
 
-        <!-- ============ kanan: peta ============ -->
         <section class="map-col">
           <div class="readout" id="readout" role="status" aria-live="polite">
             <b id="ro-name">Pilih wilayah</b>
@@ -90,8 +75,6 @@ const metaSel = document.getElementById('meta-sel');
 const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
 const fmtInt = (n) => n.toLocaleString('id-ID');
 
-// Kolom LUAS di sumber data tidak konsisten satuannya; Shape_Area (m²) terisi valid,
-// jadi luas hektar dihitung dari situ (1 ha = 10.000 m²) — sama seperti di setiap peta kerja kabupaten.
 function aggregateByWadmkk(features) {
   const byWadmkk = {};
   features.forEach((f) => {
@@ -142,10 +125,6 @@ function openRegion(el) {
   if (region) window.location.href = `${import.meta.env.BASE_URL}${region.htmlPath}`;
 }
 
-// Peta SVG dirender & bisa langsung diklik begitu SVG-nya saja selesai dimuat
-// (kecil, instan) — TIDAK menunggu geojson besar (ratusan MB) selesai diunduh.
-// Statistik luas/jumlah bidang per wilayah baru dilengkapi belakangan, setelah
-// geojson-nya selesai di-fetch di background.
 fetch(WILAYAH_SVG_URL)
   .then(res => res.text())
   .then(svgMarkup => {
@@ -155,8 +134,6 @@ fetch(WILAYAH_SVG_URL)
     const group   = mapHolder.querySelector('#regions');
     const regions = mapHolder.querySelectorAll('.region');
 
-    // Label nama wilayah dibuat dari getBBox() tiap path (bukan dihitung manual
-    // dari koordinat polygon) supaya selalu presisi terlepas dari perubahan data SVG.
     const svgNS = 'http://www.w3.org/2000/svg';
     const labelsGroup = document.createElementNS(svgNS, 'g');
     labelsGroup.setAttribute('id', 'region-labels');
@@ -180,9 +157,6 @@ fetch(WILAYAH_SVG_URL)
       el.addEventListener('focus',      () => activate(el, group, regions, labels));
       el.addEventListener('blur',       () => clear(group, regions, labels));
       el.addEventListener('click', (e) => {
-        // Di layar sentuh, tap pertama hanya menampilkan info (lihat komentar
-        // isTouchDevice di atas) — tap kedua pada wilayah yang sama, atau tombol
-        // "Buka Peta Kerja" di readout, baru memicu navigasi.
         if (isTouchDevice && !el.classList.contains('is-active')) {
           e.preventDefault();
           activate(el, group, regions, labels);

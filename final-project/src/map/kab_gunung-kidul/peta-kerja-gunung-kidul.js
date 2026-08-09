@@ -7,6 +7,6 @@ createLbsPage({
   kabLabel: 'Kabupaten Gunungkidul',
   logo: kabLogo,
   logoAlt: 'Logo Kabupaten Gunungkidul',
-  center: [110.5848, -7.9931], // sekitar Kabupaten Gunungkidul
+  center: [110.5848, -7.9931],
   zoom: 10
 });

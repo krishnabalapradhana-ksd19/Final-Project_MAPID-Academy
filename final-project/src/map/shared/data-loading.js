@@ -1,6 +1,3 @@
-// Helper pemuatan data: fetch dengan timeout, dan fetch+parse GeoJSON besar
-// lewat Web Worker supaya main thread tidak pernah beku.
-
 export async function fetchJsonWithTimeout(url, { timeoutMs = 10000 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
