@@ -10,18 +10,18 @@
   --text-muted: #898781;
   --border: rgba(11, 11, 11, 0.1);
   --gridline: #e6e5e0;
-  --accent: #0f9d58;
-  --accent-dark: #0b7d46;
-  --accent-soft: #e6f6ee;
+  --accent: #2f9e8f;
+  --accent-dark: #23766b;
+  --accent-soft: #e6f3f2;
 
   /* Motif batik (motif sama dengan landing-pages/landing-pages.css .bg-kawung / .bg-parang,
      warna garis disesuaikan ke hijau --accent supaya cocok di atas permukaan terang) */
-  --batik-kawung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='rgba(15,157,88,0.07)' stroke-width='1.1'%3E%3Cellipse cx='48' cy='26' rx='13' ry='21'/%3E%3Cellipse cx='48' cy='70' rx='13' ry='21'/%3E%3Cellipse cx='26' cy='48' rx='21' ry='13'/%3E%3Cellipse cx='70' cy='48' rx='21' ry='13'/%3E%3Ccircle cx='48' cy='48' r='2.6'/%3E%3Cellipse cx='0' cy='-22' rx='13' ry='21'/%3E%3Cellipse cx='0' cy='22' rx='13' ry='21'/%3E%3Cellipse cx='-22' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='22' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='96' cy='-22' rx='13' ry='21'/%3E%3Cellipse cx='96' cy='22' rx='13' ry='21'/%3E%3Cellipse cx='74' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='118' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='0' cy='74' rx='13' ry='21'/%3E%3Cellipse cx='0' cy='118' rx='13' ry='21'/%3E%3Cellipse cx='-22' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='22' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='96' cy='74' rx='13' ry='21'/%3E%3Cellipse cx='96' cy='118' rx='13' ry='21'/%3E%3Cellipse cx='74' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='118' cy='96' rx='21' ry='13'/%3E%3C/g%3E%3C/svg%3E");
+  --batik-kawung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='rgba(47,158,143,0.07)' stroke-width='1.1'%3E%3Cellipse cx='48' cy='26' rx='13' ry='21'/%3E%3Cellipse cx='48' cy='70' rx='13' ry='21'/%3E%3Cellipse cx='26' cy='48' rx='21' ry='13'/%3E%3Cellipse cx='70' cy='48' rx='21' ry='13'/%3E%3Ccircle cx='48' cy='48' r='2.6'/%3E%3Cellipse cx='0' cy='-22' rx='13' ry='21'/%3E%3Cellipse cx='0' cy='22' rx='13' ry='21'/%3E%3Cellipse cx='-22' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='22' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='96' cy='-22' rx='13' ry='21'/%3E%3Cellipse cx='96' cy='22' rx='13' ry='21'/%3E%3Cellipse cx='74' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='118' cy='0' rx='21' ry='13'/%3E%3Cellipse cx='0' cy='74' rx='13' ry='21'/%3E%3Cellipse cx='0' cy='118' rx='13' ry='21'/%3E%3Cellipse cx='-22' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='22' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='96' cy='74' rx='13' ry='21'/%3E%3Cellipse cx='96' cy='118' rx='13' ry='21'/%3E%3Cellipse cx='74' cy='96' rx='21' ry='13'/%3E%3Cellipse cx='118' cy='96' rx='21' ry='13'/%3E%3C/g%3E%3C/svg%3E");
   --batik-parang: repeating-linear-gradient(
     135deg,
     rgba(11, 11, 11, 0.045) 0 2px,
     transparent 2px 13px,
-    rgba(15, 157, 88, 0.05) 13px 15px,
+    rgba(47, 158, 143, 0.05) 13px 15px,
     transparent 15px 30px
   );
   --batik-surface: var(--batik-parang), var(--batik-kawung), var(--surface-1);
