@@ -3,13 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import proj4 from 'proj4';
 import { REGIONS } from '../src/shared/regions.js';
+import { UTM_49S_PROJ4 } from '../src/shared/geo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const RAW_PATH = path.join(ROOT, 'data-raw', 'LBS_DIY_66871HA.geojson');
 const OUT_DIR = path.join(ROOT, 'public', 'data', 'generated');
 
-const toUtm49S = proj4('EPSG:4326', '+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs');
+const toUtm49S = proj4('EPSG:4326', UTM_49S_PROJ4);
 
 const KABUPATEN = REGIONS.map((r) => ({ name: r.wadmkk, slug: r.slug }));
 

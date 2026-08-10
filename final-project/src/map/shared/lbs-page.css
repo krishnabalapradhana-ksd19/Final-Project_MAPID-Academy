@@ -412,6 +412,105 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.measure-control {
+  position: relative;
+}
+
+.measure-toggle svg {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+.measure-control.open .measure-toggle {
+  color: var(--accent-dark);
+}
+
+.measure-menu {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 0;
+  padding: 10px;
+  min-width: 200px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(11, 11, 11, 0.16);
+}
+
+.measure-control.open .measure-menu {
+  display: flex;
+}
+
+.measure-menu-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.measure-mode-row {
+  display: flex;
+  gap: 4px;
+}
+
+.measure-mode-row button {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.measure-mode-row button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.measure-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.measure-result {
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--page-plane);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.measure-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.measure-actions button {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.measure-actions button:hover {
+  border-color: var(--accent);
+}
+
 .panel {
   flex: none;
   width: 340px;
