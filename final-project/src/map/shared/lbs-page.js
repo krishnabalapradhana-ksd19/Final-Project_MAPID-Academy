@@ -229,6 +229,88 @@ export function createLbsPage(config) {
     }
   }
 
+  class LayerControl {
+    constructor(items) {
+      this._items = items;
+    }
+
+    onAdd(mapInstance) {
+      this._map = mapInstance;
+      this._container = document.createElement('div');
+      this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group layer-control';
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'maplibregl-ctrl-icon layer-toggle';
+      toggle.title = 'Layer';
+      toggle.setAttribute('aria-label', 'Kelola layer');
+      toggle.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="4" rx="1" />
+          <rect x="3" y="10" width="18" height="4" rx="1" />
+          <rect x="3" y="16" width="18" height="4" rx="1" />
+        </svg>
+      `;
+
+      const menu = document.createElement('div');
+      menu.className = 'layer-menu';
+      menu.innerHTML = `<div class="layer-menu-label">Layer Data</div>`;
+
+      this._items.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'layer-option';
+
+        const header = document.createElement('label');
+        header.className = 'layer-option-header';
+        header.innerHTML = `<input type="checkbox" checked /><span>${item.label}</span>`;
+        const checkbox = header.querySelector('input');
+        row.appendChild(header);
+
+        if (item.opacity) {
+          const opacityRow = document.createElement('div');
+          opacityRow.className = 'layer-opacity-row';
+          const pct = Math.round(item.opacity.value * 100);
+          opacityRow.innerHTML = `
+            <input type="range" min="0" max="100" value="${pct}" />
+            <span class="layer-opacity-value">${pct}%</span>
+          `;
+          const range = opacityRow.querySelector('input');
+          const valueEl = opacityRow.querySelector('.layer-opacity-value');
+          range.addEventListener('input', () => {
+            const value = Number(range.value);
+            valueEl.textContent = `${value}%`;
+            item.opacity.onChange(value / 100);
+          });
+          row.appendChild(opacityRow);
+        }
+
+        checkbox.addEventListener('change', () => {
+          row.classList.toggle('is-off', !checkbox.checked);
+          item.onToggle(checkbox.checked);
+        });
+
+        menu.appendChild(row);
+      });
+
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._container.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!this._container.contains(e.target)) this._container.classList.remove('open');
+      });
+
+      this._container.appendChild(toggle);
+      this._container.appendChild(menu);
+      return this._container;
+    }
+
+    onRemove() {
+      this._container.parentNode.removeChild(this._container);
+      this._map = undefined;
+    }
+  }
+
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   map.addControl(new BasemapControl(), 'bottom-right');
   map.addControl(
@@ -270,6 +352,47 @@ export function createLbsPage(config) {
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
   map.addControl(new NumericScaleControl(), 'bottom-left');
   map.addControl(new maplibregl.FullscreenControl(), 'top-right');
+
+  let fillVisible = true;
+  let outlineVisible = true;
+  let fillOpacity = 0.45;
+
+  function syncLayerState() {
+    if (map.getLayer(FILL_LAYER)) {
+      map.setLayoutProperty(FILL_LAYER, 'visibility', fillVisible ? 'visible' : 'none');
+      map.setPaintProperty(FILL_LAYER, 'fill-opacity', fillOpacity);
+    }
+    if (map.getLayer(OUTLINE_LAYER)) {
+      map.setLayoutProperty(OUTLINE_LAYER, 'visibility', outlineVisible ? 'visible' : 'none');
+    }
+  }
+
+  map.addControl(
+    new LayerControl([
+      {
+        label: 'Isi Poligon LBS',
+        opacity: {
+          value: fillOpacity,
+          onChange: (value) => {
+            fillOpacity = value;
+            syncLayerState();
+          }
+        },
+        onToggle: (checked) => {
+          fillVisible = checked;
+          syncLayerState();
+        }
+      },
+      {
+        label: 'Garis Batas Bidang',
+        onToggle: (checked) => {
+          outlineVisible = checked;
+          syncLayerState();
+        }
+      }
+    ]),
+    'top-left'
+  );
 
   const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
   const fmtInt = (n) => n.toLocaleString('id-ID');
@@ -459,6 +582,7 @@ export function createLbsPage(config) {
           });
 
           setupFeaturePopup();
+          syncLayerState();
         }
 
         if (stats?.bbox) map.fitBounds(stats.bbox, { padding: 40 });
