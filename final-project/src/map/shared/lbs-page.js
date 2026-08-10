@@ -4,6 +4,7 @@ import './lbs-page.css';
 import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './basemaps.js';
 import { fetchJsonWithTimeout, loadGeojsonViaWorker } from './data-loading.js';
 import { MeasureControl } from './measure-tool.js';
+import { UploadControl } from './upload-tool.js';
 
 export function createLbsPage(config) {
   const {
@@ -397,6 +398,8 @@ export function createLbsPage(config) {
 
   const measureControl = new MeasureControl();
   map.addControl(measureControl, 'top-left');
+  const uploadControl = new UploadControl();
+  map.addControl(uploadControl, 'top-left');
 
   const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
   const fmtInt = (n) => n.toLocaleString('id-ID');
@@ -619,7 +622,7 @@ export function createLbsPage(config) {
     }
 
     map.on('click', FILL_LAYER, async (e) => {
-      if (measureControl.isActive()) return;
+      if (measureControl.isActive() || uploadControl.hasFeatureAt(e.point)) return;
       const feature = e.features[0];
       const fid = feature.properties._fid;
 
@@ -652,8 +655,8 @@ export function createLbsPage(config) {
       `);
     });
 
-    map.on('mouseenter', FILL_LAYER, () => {
-      if (measureControl.isActive()) return;
+    map.on('mouseenter', FILL_LAYER, (e) => {
+      if (measureControl.isActive() || uploadControl.hasFeatureAt(e.point)) return;
       map.getCanvas().style.cursor = 'pointer';
     });
     map.on('mouseleave', FILL_LAYER, () => {
