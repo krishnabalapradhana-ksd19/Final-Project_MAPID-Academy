@@ -151,10 +151,14 @@ svg.map{width:100%; height:auto; max-height:72vh; display:block; overflow:visibl
   fill:rgba(233,245,242,.75); text-anchor:middle; dominant-baseline:middle;
   pointer-events:none; letter-spacing:.02em;
   filter:drop-shadow(0 1px 3px rgba(4,25,28,.9));
-  transition:fill .3s ease;
+  transform-box:fill-box; transform-origin:center;
+  transition:transform .38s cubic-bezier(.2,.9,.25,1), fill .3s ease;
 }
 #regions.dimmed ~ #region-labels .region-label{fill:rgba(233,245,242,.35)}
-.region-label.is-active{fill:var(--mint); font-weight:700}
+.region-label.is-active{
+  fill:var(--mint); font-weight:700;
+  transform:translateY(-9px) scale(1.03);
+}
 @media (max-width:520px){
   .region-label{font-size:9px}
 }
