@@ -26,10 +26,6 @@ export const fmtFileStamp = (date = new Date()) =>
     String(date.getDate()).padStart(2, '0')
   ].join('');
 
-// Label grid UTM ditulis polos tanpa pemisah ribuan, mengikuti kelaziman
-// lembar peta resmi (mis. 380000, 385000).
-export const fmtUtmLabel = (meters) => String(Math.round(meters));
-
 export const slugify = (text) =>
   String(text)
     .toLowerCase()

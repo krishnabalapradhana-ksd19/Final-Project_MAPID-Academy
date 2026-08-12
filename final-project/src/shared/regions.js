@@ -5,8 +5,9 @@ export const REGIONS = [
     wadmkk: 'Sleman',
     kabName: 'Sleman',
     kabLabel: 'Kabupaten Sleman',
-    shortName: 'Sleman',
-    htmlPath: 'src/map/kab_sleman/peta-kerja-sleman.html'
+    htmlPath: 'src/map/kab_sleman/peta-kerja-sleman.html',
+    center: [110.375, -7.68],
+    zoom: 11
   },
   {
     slug: 'bantul',
@@ -14,8 +15,9 @@ export const REGIONS = [
     wadmkk: 'Bantul',
     kabName: 'Bantul',
     kabLabel: 'Kabupaten Bantul',
-    shortName: 'Bantul',
-    htmlPath: 'src/map/kab-bantul/peta-kerja-bantul.html'
+    htmlPath: 'src/map/kab-bantul/peta-kerja-bantul.html',
+    center: [110.3669, -7.8984],
+    zoom: 11
   },
   {
     slug: 'gunungkidul',
@@ -23,8 +25,9 @@ export const REGIONS = [
     wadmkk: 'Gunungkidul',
     kabName: 'Gunungkidul',
     kabLabel: 'Kabupaten Gunungkidul',
-    shortName: 'Gunungkidul',
-    htmlPath: 'src/map/kab_gunung-kidul/peta-kerja-gunung-kidul.html'
+    htmlPath: 'src/map/kab_gunung-kidul/peta-kerja-gunung-kidul.html',
+    center: [110.5848, -7.9931],
+    zoom: 10
   },
   {
     slug: 'kulon-progo',
@@ -32,8 +35,9 @@ export const REGIONS = [
     wadmkk: 'Kulon Progo',
     kabName: 'Kulon Progo',
     kabLabel: 'Kabupaten Kulon Progo',
-    shortName: 'Kulon Progo',
-    htmlPath: 'src/map/kab_kulon-progo/peta-kerja-kulon-progo.html'
+    htmlPath: 'src/map/kab_kulon-progo/peta-kerja-kulon-progo.html',
+    center: [110.1476, -7.8144],
+    zoom: 11
   },
   {
     slug: 'yogyakarta',
@@ -41,7 +45,10 @@ export const REGIONS = [
     wadmkk: 'Kota Yogyakarta',
     kabName: 'Kota Yogyakarta',
     kabLabel: 'Kota Yogyakarta',
-    shortName: 'Kota Yogyakarta',
-    htmlPath: 'src/map/kota_yogyakarta/peta-kerja-yogyakarta.html'
+    htmlPath: 'src/map/kota_yogyakarta/peta-kerja-yogyakarta.html',
+    center: [110.3761, -7.8079],
+    zoom: 12
   }
 ];
+
+export const regionBy = (key) => Object.fromEntries(REGIONS.map((r) => [r[key], r]));

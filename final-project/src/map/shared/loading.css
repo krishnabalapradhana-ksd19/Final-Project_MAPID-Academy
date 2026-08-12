@@ -7,12 +7,16 @@
   to { transform: rotate(360deg); }
 }
 
-.skeleton-text {
-  color: transparent !important;
-  border-radius: 4px;
+.skeleton-text,
+.bar-row-skeleton {
   background: linear-gradient(90deg, var(--gridline) 25%, var(--surface-1) 50%, var(--gridline) 75%);
   background-size: 200% 100%;
   animation: lbs-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-text {
+  color: transparent !important;
+  border-radius: 4px;
   display: inline-block;
   min-width: 44px;
 }
@@ -20,9 +24,6 @@
 .bar-row-skeleton {
   height: 34px;
   border-radius: 6px;
-  background: linear-gradient(90deg, var(--gridline) 25%, var(--surface-1) 50%, var(--gridline) 75%);
-  background-size: 200% 100%;
-  animation: lbs-shimmer 1.4s ease-in-out infinite;
 }
 
 .map-status {

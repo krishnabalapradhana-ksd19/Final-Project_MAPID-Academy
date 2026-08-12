@@ -12,8 +12,6 @@ const OUT_DIR = path.join(ROOT, 'public', 'data', 'generated');
 
 const toUtm49S = proj4('EPSG:4326', UTM_49S_PROJ4);
 
-const KABUPATEN = REGIONS.map((r) => ({ name: r.wadmkk, slug: r.slug }));
-
 const COORD_PRECISION = 6;
 
 function roundCoord(n) {
@@ -75,7 +73,7 @@ function bboxOfFeatures(features) {
 function isUpToDate() {
   if (!existsSync(OUT_DIR)) return false;
   const rawTime = statSync(RAW_PATH).mtimeMs;
-  return KABUPATEN.every(({ slug }) => {
+  return REGIONS.every(({ slug }) => {
     const geoPath = path.join(OUT_DIR, `lbs-${slug}.geojson`);
     const statsPath = path.join(OUT_DIR, `stats-lbs-${slug}.json`);
     return (
@@ -116,8 +114,8 @@ function main() {
 
   const report = [];
 
-  for (const { name, slug } of KABUPATEN) {
-    const rawFeatures = raw.features.filter((f) => f.properties.WADMKK === name);
+  for (const { wadmkk, slug } of REGIONS) {
+    const rawFeatures = raw.features.filter((f) => f.properties.WADMKK === wadmkk);
     const features = rawFeatures.map((f, idx) => ({
       type: 'Feature',
       properties: { WADMKC: f.properties.WADMKC, _fid: idx },
@@ -138,12 +136,10 @@ function main() {
     kecOrder.forEach((k) => (kecFeatureIndexes[k] = []));
 
     const attrs = new Array(features.length);
-    const luasM2ByFeature = new Array(features.length);
 
     features.forEach((f, idx) => {
       const luasM2 = featureAreaMeters(f.geometry);
       const luasHa = luasM2 / 10000;
-      luasM2ByFeature[idx] = luasM2;
       attrs[idx] = { ...rawFeatures[idx].properties, LUAS_M2_UTM49S: Math.round(luasM2 * 100) / 100 };
       totalLuasHa += luasHa;
       const kec = f.properties.WADMKC;
@@ -166,7 +162,7 @@ function main() {
 
     const stats = {
       generatedAt: new Date().toISOString(),
-      kabupaten: name,
+      kabupaten: wadmkk,
       proyeksiLuas: 'EPSG:32749 (UTM 49S)',
       totalLuasHa: Math.round(totalLuasHa * 100) / 100,
       jumlahBidang: features.length,
@@ -186,7 +182,7 @@ function main() {
     writeFileSync(attrsOut, JSON.stringify(attrs));
 
     report.push({
-      kabupaten: name,
+      kabupaten: wadmkk,
       slug,
       feature: features.length,
       geoMB: formatMB(statSync(geoOut).size),

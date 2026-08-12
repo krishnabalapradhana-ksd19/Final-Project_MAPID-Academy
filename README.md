@@ -34,14 +34,18 @@ Dibangun oleh **Alvito Krishna Balapradhana**.
 
 ## Fitur Utama
 
-- **Landing page peta wilayah DIY** — peta SVG interaktif 5 kabupaten/kota; hover menampilkan ringkasan luas & jumlah bidang LBS, klik membuka halaman peta kerja kabupaten terkait (`src/landing-pages.js`).
+- **Landing page peta wilayah DIY** — peta SVG interaktif 5 kabupaten/kota; hover menampilkan ringkasan luas & jumlah bidang LBS (dibaca dari berkas statistik pra-hitung, bukan dari geojson mentah), klik membuka halaman peta kerja kabupaten terkait (`src/landing-pages.js`).
 - **Peta kerja per kabupaten/kota** (5 halaman terpisah, satu untuk tiap kabupaten/kota) berbasis MapLibre GL, masing-masing menyediakan:
   - Render poligon bidang LBS dengan pewarnaan otomatis per kapanewon/kecamatan.
   - **Filter wilayah** by kapanewon/kecamatan (chip filter) yang men-zoom peta ke bounding box wilayah terpilih.
   - **Panel statistik**: total luas (Ha), jumlah bidang, rata-rata luas per bidang, dan persentase terhadap total kabupaten — pra-dihitung saat build, bukan dihitung di browser.
   - **Grafik batang distribusi luas** per kapanewon/kecamatan.
   - **Popup detail bidang** menampilkan seluruh kolom atribut asli saat sebuah poligon diklik (dimuat lazy, terpisah dari geometri).
-  - **Pencarian kapanewon/kecamatan** lewat kotak cari di topbar.
+  - **Pencarian kapanewon/kecamatan atau koordinat** (`lat, lon`) lewat kotak cari di topbar.
+  - **Widget layer**: toggle isi poligon & garis batas bidang, plus pengatur opasitas.
+  - **Widget ukur**: menandai titik (koordinat), mengukur jarak, dan menghitung luas — semua direproyeksikan ke UTM 49S.
+  - **Upload data (pratinjau)**: GeoJSON/KML/SHP (ZIP) ditampilkan sementara di peta; tidak diunggah maupun disimpan ke server.
+  - **Print peta**: ekspor layout kartografis 300 DPI ke PNG/JPG atau **GeoPDF** (muka peta berkoordinat, terbaca di Avenza Maps & QGIS).
   - **Switch basemap**: Google Satellite, OpenStreetMap, Esri Imagery, Esri Topografi.
   - **Toggle proyeksi peta** 2D (Mercator) / Globe (bawaan MapLibre GL).
   - Kontrol peta tambahan: skala bar + skala angka (representative fraction), fullscreen, geolocate ("Lokasi Saya").
@@ -55,10 +59,12 @@ Dibangun oleh **Alvito Krishna Balapradhana**.
 
 | Layer | Teknologi | Keterangan |
 |---|---|---|
-| Build tool | **Vite 8** | Multi-page build (1 halaman landing + 5 halaman peta kerja), dev server dengan alias URL kustom |
-| Peta client | **MapLibre GL JS 5** | Rendering vector/raster, kontrol kustom (basemap switcher, skala angka) |
+| Build tool | **Vite 8** | Multi-page build (1 halaman landing + 5 halaman peta kerja) |
+| Peta client | **MapLibre GL JS 5** | Rendering vector/raster, kontrol kustom (basemap, layer, ukur, upload, print, skala angka) |
 | Bahasa | **JavaScript (ES Modules)**, vanilla — tanpa framework UI (React/Vue/dll) | Seluruh manipulasi DOM ditulis manual |
-| Proyeksi geospasial | **proj4** | Reprojeksi WGS84 → UTM 49S (EPSG:32749) untuk menghitung luas bidang secara akurat |
+| Proyeksi geospasial | **proj4** | Reprojeksi WGS84 → UTM 49S (EPSG:32749) untuk menghitung luas bidang & grid UTM pada layout cetak |
+| Ekspor peta | **pdf-lib** | Layout cetak 300 DPI + georeferensi GeoPDF (ISO 32000) pada muka peta |
+| Parsing berkas unggahan | **@tmcw/togeojson**, **shpjs** | KML & Shapefile (ZIP) → GeoJSON, di-`import()` dinamis agar tidak membebani bundel awal |
 | Concurrency | **Web Worker** (native) | Parsing GeoJSON besar di luar main thread |
 | Integrasi data | **googleapis** (Node) | Mengunduh geojson mentah dari Google Drive via Service Account saat build CI |
 | CI/CD | **GitHub Actions** | Build otomatis + deploy ke GitHub Pages saat push ke `main` |
@@ -75,12 +81,11 @@ Final-Project_MAPID-Academy/
 │
 ├── google-drive-integration/   # Skrip Node terpisah (bukan bagian bundle frontend)
 │   ├── download-geojson.js     # Unduh geojson mentah dari Google Drive (dipakai CI)
-│   ├── index.js                # Skrip utilitas: listing file di Drive
 │   └── package.json
 │
 ├── final-project/              # Aplikasi WebGIS (root Vite)
 │   ├── index.html              # Entry landing page
-│   ├── vite.config.js          # Multi-page build + alias URL pendek untuk halaman peta kerja
+│   ├── vite.config.js          # Multi-page build (entry HTML dikumpulkan otomatis dari src/map)
 │   ├── scripts/
 │   │   └── build-data.mjs      # Pipeline: pecah geojson mentah → per kabupaten + statistik
 │   ├── data-raw/                # (gitignored) Geojson mentah hasil unduh dari Google Drive
@@ -91,30 +96,41 @@ Final-Project_MAPID-Academy/
 │   │   └── attrs-lbs-<slug>.json    # Atribut lengkap per bidang, diindeks oleh _fid
 │   └── src/
 │       ├── landing-pages.js / .css  # Halaman peta wilayah DIY (5 region SVG)
-│       ├── shared/
-│       │   └── regions.js           # Satu sumber data 5 kabupaten/kota (slug, id SVG, nama, WADMKK) — dipakai landing-pages.js & scripts/build-data.mjs
+│       ├── shared/                  # Dipakai bersama browser & Node
+│       │   ├── regions.js           # Satu sumber data 5 kabupaten/kota (slug, id SVG, WADMKK, nama, link, center, zoom)
+│       │   ├── geo.js               # Proyeksi, skala, konversi Web Mercator/UTM
+│       │   ├── format.js            # Format angka/tanggal locale id-ID
+│       │   └── fetch-json.js        # Fetch JSON dengan timeout (main thread & worker)
 │       ├── assets/                  # Logo kabupaten/kota
 │       ├── mapid-assets/            # Logo MAPID
 │       ├── prov-diy-assets/         # Logo DIY, peta SVG wilayah (diy-wilayah.svg)
 │       └── map/
 │           ├── shared/
 │           │   ├── lbs-page.js      # Factory halaman peta kerja — dipakai oleh kelima kabupaten/kota
-│           │   ├── lbs-page.css     # Tema & layout halaman peta kerja — satu file dipakai bersama oleh kelima kabupaten/kota
+│           │   ├── lbs-page.css     # Tema & layout halaman peta kerja — satu file dipakai bersama
+│           │   ├── map-control.js   # Basis kontrol peta: tombol + dropdown (dipakai semua widget)
+│           │   ├── feature-popup.js # Popup atribut fitur (escaping + tabel) — dipakai layer LBS & unggahan
 │           │   ├── basemaps.js      # Konfigurasi basemap (Google/OSM/Esri)
-│           │   ├── data-loading.js  # Fetch dengan timeout + loader via Web Worker
+│           │   ├── measure-tool.js  # Widget ukur titik/jarak/luas
+│           │   ├── upload-tool.js   # Widget upload GeoJSON/KML/SHP (pratinjau)
+│           │   ├── print-tool.js    # Dialog print + pemicu ekspor
+│           │   ├── print-layout.js  # Render layout kartografis ke canvas 300 DPI
+│           │   ├── print-export.js  # Ekspor canvas → PNG/JPG/PDF
+│           │   ├── geopdf.js        # Georeferensi ISO 32000 untuk halaman PDF
+│           │   ├── data-loading.js  # Loader GeoJSON via Web Worker
 │           │   ├── geojson-worker.js
 │           │   └── loading.css
 │           ├── kab-bantul/
 │           ├── kab_gunung-kidul/
 │           ├── kab_kulon-progo/
 │           ├── kab_sleman/
-│           └── kota_yogyakarta/     # Masing-masing hanya: .html + .js (config kabupaten: nama, logo, koordinat pusat, zoom)
+│           └── kota_yogyakarta/     # Masing-masing hanya: .html + .js pemanggil `createLbsPage('<slug>')`
 │
 ├── LICENSE                      # MIT
 └── README.md
 ```
 
-> Setiap folder `src/map/<kabupaten>/` hanya berisi file konfigurasi tipis (nama, logo, koordinat pusat peta) — seluruh logika dan tampilan peta kerja dipusatkan di `src/map/shared/lbs-page.js` + `lbs-page.css` agar tidak terjadi duplikasi kode/style di 5 halaman. Metadata wilayah (nama, WADMKK, link) sendiri dipusatkan di `src/shared/regions.js`, dipakai bersama oleh landing page (browser) dan `scripts/build-data.mjs` (Node) supaya tidak ditulis ulang di banyak tempat dengan risiko id yang tidak konsisten.
+> Setiap folder `src/map/<kabupaten>/` hanya berisi `.html` + satu baris pemanggilan `createLbsPage('<slug>')` — seluruh logika, konfigurasi, dan tampilan peta kerja dipusatkan di `src/map/shared/` agar tidak terjadi duplikasi di 5 halaman. Metadata wilayah (nama, WADMKK, link, center, zoom) dipusatkan di `src/shared/regions.js`, dipakai bersama oleh landing page, kelima halaman peta kerja (browser), dan `scripts/build-data.mjs` (Node) supaya tidak ditulis ulang di banyak tempat dengan risiko id yang tidak konsisten.
 
 ---
 
@@ -141,17 +157,13 @@ Slug kabupaten yang dipakai di penamaan file: `bantul`, `gunungkidul`, `kulon-pr
 
 ## Roadmap / Rencana Pengembangan
 
-Versi saat ini adalah **static site read-only** (lihat [Fitur Utama](#fitur-utama)) — belum ada backend maupun database. Berikut fitur lanjutan yang direncanakan pada halaman peta kerja, beserta kebutuhan teknisnya:
+Versi saat ini adalah **static site read-only** — belum ada backend maupun database. Widget layer, ukur, upload, dan print sudah **selesai diimplementasikan** (lihat [Fitur Utama](#fitur-utama)). Sisa rencana pengembangan:
 
 | Fitur | Deskripsi | Kebutuhan Teknis |
 |---|---|---|
-| **Widget Layer** | Panel kontrol untuk mengaktifkan/menonaktifkan & mengatur beberapa layer data sekaligus pada satu peta. Saat ini setiap halaman peta kerja hanya menampilkan satu layer LBS yang selalu aktif, tanpa panel toggle layer. | Frontend saja — state layer dikelola di client |
-| **Widget Ukur (Digitasi)** | Alat gambar titik/garis/poligon langsung di peta untuk mengukur jarak & luas secara interaktif. Saat ini belum ada interaksi gambar/digitasi apa pun di peta. | Frontend saja — mis. `maplibre-gl-draw` + perhitungan geodesic |
-| **Upload Data (cek data, preview-only)** | Pengguna dapat mengunggah berkas (GeoJSON/SHP/KML) untuk ditampilkan **sementara** di peta sebagai pratinjau/pengecekan visual. Data yang diunggah **tidak disimpan** ke server, database, maupun ke `public/data/generated/` — murni untuk pengecekan di sisi client. | Frontend saja — parsing di browser; untuk format Shapefile (`.shp`), pertimbangkan library seperti `shpjs` **saat fitur ini mulai dikerjakan** (belum ditambahkan ke `package.json` — dependency yang belum dipakai sebelumnya sudah dilepas agar tidak terpasang tanpa fungsi) |
-| **Print Peta** | Ekspor tampilan peta yang sedang aktif (termasuk legend & skala) ke PDF/gambar. | Frontend saja — mis. `html2canvas` / `jsPDF` |
 | **Edit Atribut Fitur** | Popup detail bidang saat ini bersifat **read-only** (lihat `setupFeaturePopup` di `src/map/shared/lbs-page.js`). Rencana pengembangan memungkinkan pengguna mengubah nilai kolom atribut langsung dari popup. | **Membutuhkan backend + database** agar perubahan tersimpan permanen — satu-satunya item roadmap yang keluar dari arsitektur static site saat ini |
 
-> Kelima item di atas adalah rencana pengembangan, **belum diimplementasikan** di kode saat ini.
+> Item di atas **belum diimplementasikan** di kode saat ini.
 
 ---
 
@@ -225,16 +237,16 @@ Setiap perintah `dev`/`build` otomatis menjalankan `npm run build:data` lebih du
 
 Halaman yang tersedia setelah server berjalan:
 
-| Halaman | URL (dev) |
+| Halaman | URL |
 |---|---|
 | Landing / peta wilayah DIY | `/` |
-| Peta kerja Kabupaten Sleman | `/peta-kerja-sleman.html` |
-| Peta kerja Kabupaten Bantul | `/peta-kerja-bantul.html` |
-| Peta kerja Kabupaten Kulon Progo | `/peta-kerja-kulon-progo.html` |
-| Peta kerja Kabupaten Gunungkidul | `/peta-kerja-gunung-kidul.html` |
-| Peta kerja Kota Yogyakarta | `/peta-kerja-yogyakarta.html` |
+| Peta kerja Kabupaten Sleman | `/src/map/kab_sleman/peta-kerja-sleman.html` |
+| Peta kerja Kabupaten Bantul | `/src/map/kab-bantul/peta-kerja-bantul.html` |
+| Peta kerja Kabupaten Kulon Progo | `/src/map/kab_kulon-progo/peta-kerja-kulon-progo.html` |
+| Peta kerja Kabupaten Gunungkidul | `/src/map/kab_gunung-kidul/peta-kerja-gunung-kidul.html` |
+| Peta kerja Kota Yogyakarta | `/src/map/kota_yogyakarta/peta-kerja-yogyakarta.html` |
 
-> Alias URL pendek di atas (mis. `/peta-kerja-sleman.html`) hanya berlaku di **dev server** (lihat plugin kustom di `vite.config.js`). Pada hasil build statis, path sebenarnya mengikuti struktur folder sumber, mis. `/src/map/kab_sleman/peta-kerja-sleman.html`.
+> Path di atas identik antara dev server dan hasil build statis — cukup klik salah satu wilayah di landing page untuk membukanya.
 
 ### Testing
 

@@ -1,11 +1,14 @@
 import maplibregl from 'maplibre-gl';
+import { bindFeaturePopup, popupHtml, propsTable } from './feature-popup.js';
+import { DropdownControl, onceLoaded } from './map-control.js';
 
 const SOURCE_ID = 'upload-preview-src';
 const FILL_LAYER = 'upload-preview-fill';
 const LINE_LAYER = 'upload-preview-line';
 const POINT_LAYER = 'upload-preview-point';
+const LAYERS = [FILL_LAYER, LINE_LAYER, POINT_LAYER];
 
-const UPLOAD_COLOR = '#8b5cf6';
+const COLOR = '#8b5cf6';
 const ACCEPT = '.geojson,.json,.kml,.zip';
 const MAX_FILE_BYTES = 30 * 1024 * 1024;
 
@@ -13,15 +16,17 @@ const POLYGON_TYPES = ['Polygon', 'MultiPolygon'];
 const LINE_TYPES = ['Polygon', 'MultiPolygon', 'LineString', 'MultiLineString'];
 const POINT_TYPES = ['Point', 'MultiPoint'];
 
+const EMPTY = { type: 'FeatureCollection', features: [] };
+
+const ICON = `
+  <path d="M12 16V4" />
+  <path d="m7 9 5-5 5 5" />
+  <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+`;
+
 function extOf(name) {
   const i = name.lastIndexOf('.');
   return i === -1 ? '' : name.slice(i + 1).toLowerCase();
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
 }
 
 function normalizeToFeatureCollection(geojson) {
@@ -32,20 +37,16 @@ function normalizeToFeatureCollection(geojson) {
 }
 
 async function parseFile(file) {
-  if (file.size > MAX_FILE_BYTES) {
-    throw new Error(`${file.name}: ukuran berkas melebihi 30 MB.`);
-  }
+  if (file.size > MAX_FILE_BYTES) throw new Error(`${file.name}: ukuran berkas melebihi 30 MB.`);
 
   const ext = extOf(file.name);
 
   if (ext === 'geojson' || ext === 'json') {
-    let parsed;
     try {
-      parsed = JSON.parse(await file.text());
+      return normalizeToFeatureCollection(JSON.parse(await file.text()));
     } catch {
       throw new Error(`${file.name}: JSON tidak valid.`);
     }
-    return normalizeToFeatureCollection(parsed);
   }
 
   if (ext === 'kml') {
@@ -63,14 +64,15 @@ async function parseFile(file) {
     } catch (err) {
       throw new Error(`${file.name}: gagal membaca SHP (${err.message}).`);
     }
-    const collections = Array.isArray(result) ? result : [result];
-    const features = collections.flatMap((fc) => fc.features || []);
+    const features = (Array.isArray(result) ? result : [result]).flatMap((fc) => fc.features || []);
     if (!features.length) throw new Error(`${file.name}: tidak ada fitur pada berkas SHP.`);
     return { type: 'FeatureCollection', features };
   }
 
   throw new Error(`${file.name}: format tidak didukung. Gunakan GeoJSON, KML, atau SHP (ZIP).`);
 }
+
+const stringifyValue = (value) => (typeof value === 'object' ? JSON.stringify(value) : value);
 
 function extendBounds(bounds, geometry) {
   if (!geometry) return;
@@ -85,100 +87,64 @@ function extendBounds(bounds, geometry) {
   if (geometry.coordinates) walk(geometry.coordinates);
 }
 
-function renderProps(props) {
-  const keys = Object.keys(props || {});
-  if (!keys.length) return '<div class="feature-popup-loading">Tidak ada atribut.</div>';
-  const rows = keys
-    .map((key) => {
-      let value = props[key];
-      if (value === null || value === undefined || value === '') value = '-';
-      else if (typeof value === 'object') value = JSON.stringify(value);
-      return `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`;
-    })
-    .join('');
-  return `<table class="feature-popup-table">${rows}</table>`;
-}
-
-export class UploadControl {
+export class UploadControl extends DropdownControl {
   constructor() {
+    super({
+      icon: ICON,
+      title: 'Unggah Data (Pratinjau)',
+      ariaLabel: 'Unggah data untuk pratinjau',
+      label: 'Unggah Data (Pratinjau)'
+    });
     this._lastData = null;
   }
 
-  onAdd(mapInstance) {
-    this._map = mapInstance;
-
-    this._container = document.createElement('div');
-    this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group upload-control';
-
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'maplibregl-ctrl-icon upload-toggle';
-    toggle.title = 'Unggah Data (Pratinjau)';
-    toggle.setAttribute('aria-label', 'Unggah data untuk pratinjau');
-    toggle.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 16V4" />
-        <path d="m7 9 5-5 5 5" />
-        <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-      </svg>
-    `;
-
-    const menu = document.createElement('div');
-    menu.className = 'upload-menu';
-    menu.innerHTML = `
-      <div class="upload-menu-label">Unggah Data (Pratinjau)</div>
-      <div class="upload-hint">GeoJSON, KML, atau SHP (ZIP). Hanya pratinjau di peta — tidak diunggah atau disimpan ke server.</div>
-      <label class="upload-pick">
-        Pilih Berkas…
-        <input type="file" accept="${ACCEPT}" multiple hidden />
-      </label>
-      <div class="upload-status" hidden></div>
-      <div class="upload-actions" hidden>
-        <button type="button" class="upload-fit">Perbesar ke Data</button>
-        <button type="button" class="upload-clear">Hapus</button>
-      </div>
-    `;
+  buildMenu(menu, map) {
+    menu.insertAdjacentHTML(
+      'beforeend',
+      `
+        <div class="dropdown-hint">
+          GeoJSON, KML, atau SHP (ZIP). Hanya pratinjau di peta — tidak diunggah atau disimpan ke server.
+        </div>
+        <label class="upload-pick">
+          Pilih Berkas…
+          <input type="file" accept="${ACCEPT}" multiple hidden />
+        </label>
+        <div class="dropdown-note upload-status" hidden></div>
+        <div class="dropdown-actions" hidden>
+          <button type="button" class="upload-fit">Perbesar ke Data</button>
+          <button type="button" class="upload-clear">Hapus</button>
+        </div>
+      `
+    );
 
     this._input = menu.querySelector('input[type=file]');
     this._statusEl = menu.querySelector('.upload-status');
-    this._actionsEl = menu.querySelector('.upload-actions');
+    this._actionsEl = menu.querySelector('.dropdown-actions');
 
     this._input.addEventListener('change', () => this._handleFiles(this._input.files));
     menu.querySelector('.upload-fit').addEventListener('click', () => this._fitToData());
     menu.querySelector('.upload-clear').addEventListener('click', () => this._clear());
 
-    toggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._container.classList.toggle('open');
-    });
-    document.addEventListener('click', (e) => {
-      if (!this._container.contains(e.target)) this._container.classList.remove('open');
-    });
-
-    this._menu = menu;
-    this._container.appendChild(toggle);
-    this._container.appendChild(menu);
-
-    if (mapInstance.loaded()) this._setupLayers();
-    else mapInstance.once('load', () => this._setupLayers());
-
-    return this._container;
+    onceLoaded(map, () => this._setupLayers());
   }
 
   onRemove() {
-    this._removeLayers();
-    this._container.parentNode.removeChild(this._container);
-    this._map = undefined;
+    const map = this._map;
+    LAYERS.forEach((id) => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+    if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+    super.onRemove();
   }
 
   hasFeatureAt(point) {
-    if (!this._map || !this._map.getLayer(POINT_LAYER)) return false;
-    return this._map.queryRenderedFeatures(point, { layers: [FILL_LAYER, LINE_LAYER, POINT_LAYER] }).length > 0;
+    if (!this._map?.getLayer(POINT_LAYER)) return false;
+    return this._map.queryRenderedFeatures(point, { layers: LAYERS }).length > 0;
   }
 
   _setupLayers() {
     const map = this._map;
-    map.addSource(SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addSource(SOURCE_ID, { type: 'geojson', data: EMPTY });
 
     map.addLayer({
       id: FILL_LAYER,
@@ -186,7 +152,7 @@ export class UploadControl {
       source: SOURCE_ID,
       filter: ['in', ['geometry-type'], ['literal', POLYGON_TYPES]],
       metadata: { legendLabel: 'Data Unggahan — Area' },
-      paint: { 'fill-color': UPLOAD_COLOR, 'fill-opacity': 0.25 }
+      paint: { 'fill-color': COLOR, 'fill-opacity': 0.25 }
     });
     map.addLayer({
       id: LINE_LAYER,
@@ -194,7 +160,7 @@ export class UploadControl {
       source: SOURCE_ID,
       filter: ['in', ['geometry-type'], ['literal', LINE_TYPES]],
       metadata: { legendLabel: 'Data Unggahan — Garis' },
-      paint: { 'line-color': UPLOAD_COLOR, 'line-width': 2 }
+      paint: { 'line-color': COLOR, 'line-width': 2 }
     });
     map.addLayer({
       id: POINT_LAYER,
@@ -202,67 +168,39 @@ export class UploadControl {
       source: SOURCE_ID,
       filter: ['in', ['geometry-type'], ['literal', POINT_TYPES]],
       metadata: { legendLabel: 'Data Unggahan — Titik' },
-      paint: { 'circle-color': UPLOAD_COLOR, 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 }
+      paint: { 'circle-color': COLOR, 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 }
     });
 
-    this._setupPopup();
-
-    if (this._lastData) map.getSource(SOURCE_ID).setData(this._lastData);
-  }
-
-  _removeLayers() {
-    const map = this._map;
-    if (!map) return;
-    [FILL_LAYER, LINE_LAYER, POINT_LAYER].forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    });
-    if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-  }
-
-  _setupPopup() {
-    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '320px' });
-    [FILL_LAYER, LINE_LAYER, POINT_LAYER].forEach((layerId) => {
-      this._map.on('click', layerId, (e) => {
+    bindFeaturePopup(map, LAYERS, {
+      render: (e, popup) => {
         popup
           .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="feature-popup">
-              <div class="feature-popup-title">Pratinjau Unggahan</div>
-              <div class="feature-popup-scroll">${renderProps(e.features[0].properties)}</div>
-            </div>
-          `)
-          .addTo(this._map);
-      });
-      this._map.on('mouseenter', layerId, () => {
-        this._map.getCanvas().style.cursor = 'pointer';
-      });
-      this._map.on('mouseleave', layerId, () => {
-        this._map.getCanvas().style.cursor = '';
-      });
+          .setHTML(popupHtml('Pratinjau Unggahan', propsTable(e.features[0].properties, stringifyValue)))
+          .addTo(map);
+      }
     });
+
+    if (this._lastData) map.getSource(SOURCE_ID).setData(this._lastData);
   }
 
   async _handleFiles(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length) return;
 
-    this._setStatus('Memuat berkas…', 'loading');
+    this._setStatus('Memuat berkas…', 'is-loading');
     try {
       const collections = await Promise.all(files.map(parseFile));
       const features = collections.flatMap((fc) => fc.features);
       if (!features.length) throw new Error('Tidak ada fitur yang dapat ditampilkan.');
 
-      const merged = { type: 'FeatureCollection', features };
-      this._lastData = merged;
+      this._lastData = { type: 'FeatureCollection', features };
+      this._map.getSource(SOURCE_ID)?.setData(this._lastData);
 
-      const source = this._map.getSource(SOURCE_ID);
-      if (source) source.setData(merged);
-
-      this._setStatus(`${files.map((f) => f.name).join(', ')} — ${features.length} fitur dimuat (pratinjau).`, 'ok');
+      this._setStatus(`${files.map((f) => f.name).join(', ')} — ${features.length} fitur dimuat (pratinjau).`);
       this._actionsEl.hidden = false;
       this._fitToData();
     } catch (err) {
-      this._setStatus(err.message || 'Gagal memuat berkas.', 'error');
+      this._setStatus(err.message || 'Gagal memuat berkas.', 'is-error');
     } finally {
       this._input.value = '';
     }
@@ -277,17 +215,14 @@ export class UploadControl {
 
   _clear() {
     this._lastData = null;
-    const source = this._map.getSource(SOURCE_ID);
-    if (source) source.setData({ type: 'FeatureCollection', features: [] });
+    this._map.getSource(SOURCE_ID)?.setData(EMPTY);
     this._statusEl.hidden = true;
     this._actionsEl.hidden = true;
   }
 
-  _setStatus(text, kind) {
+  _setStatus(text, kind = '') {
     this._statusEl.hidden = false;
     this._statusEl.textContent = text;
-    this._statusEl.classList.toggle('is-error', kind === 'error');
-    this._statusEl.classList.toggle('is-loading', kind === 'loading');
-    this._statusEl.classList.toggle('is-ok', kind === 'ok');
+    this._statusEl.className = `dropdown-note upload-status ${kind}`.trim();
   }
 }

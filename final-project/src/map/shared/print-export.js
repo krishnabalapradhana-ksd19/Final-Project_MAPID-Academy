@@ -1,14 +1,9 @@
-import { jsPDF } from 'jspdf';
-import { lngLatToWebMercator } from '../../shared/geo.js';
+import { PDFDocument } from 'pdf-lib';
 import { fmtFileStamp, slugify } from '../../shared/format.js';
-import { PRINT_DPI, paperSizeMm, prepareMapArtifacts, renderPrintLayout } from './print-layout.js';
+import { prepareMapArtifacts, renderPrintLayout } from './print-layout.js';
+import { attachGeoreference, mmToPdfUnits } from './geopdf.js';
 
-const GEOPDF_ENDPOINT = import.meta.env.VITE_GEOPDF_API || '/api/geopdf';
 const JPEG_QUALITY = 0.92;
-
-// GeoPDF dibuat dari citra Web Mercator apa adanya, jadi georeferensinya
-// dititipkan pada EPSG:3857 — tepat, tanpa perlu resampling di sisi server.
-const GEOPDF_EPSG = 3857;
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -41,68 +36,41 @@ async function exportImage(canvas, { title, imageFormat }) {
   downloadBlob(blob, fileNameFor(title, isJpeg ? 'jpg' : 'png'));
 }
 
-async function exportPdf(canvas, { title, author, paper, orientation }) {
-  const page = paperSizeMm(paper, orientation);
-  const pdf = new jsPDF({ orientation, unit: 'mm', format: paper.toLowerCase(), compress: true });
+async function exportPdf(canvas, page, mapFaceMm, bounds, { title, author }) {
+  const jpegBytes = await (await canvasToBlob(canvas, 'image/jpeg', JPEG_QUALITY)).arrayBuffer();
 
-  pdf.setProperties({ title, author: author || '', creator: 'WebGIS LBS DIY' });
-  pdf.addImage(canvas.toDataURL('image/jpeg', JPEG_QUALITY), 'JPEG', 0, 0, page.width, page.height, undefined, 'FAST');
-  downloadBlob(pdf.output('blob'), fileNameFor(title, 'pdf'));
-}
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.setTitle(title || 'Peta');
+  pdfDoc.setAuthor(author || '');
+  pdfDoc.setCreator('WebGIS LBS DIY');
+  pdfDoc.setProducer('WebGIS LBS DIY');
 
-async function exportGeoPdf(canvas, mapFace, bounds, { title, author }) {
-  const imageBlob = await canvasToBlob(canvas, 'image/png');
-
-  const [west, south] = lngLatToWebMercator(bounds.getWest(), bounds.getSouth());
-  const [east, north] = lngLatToWebMercator(bounds.getEast(), bounds.getNorth());
-
-  // Halaman utuh dikirim, disertai kotak muka peta dalam piksel. Server memakai
-  // itu untuk memasang neatline: koordinat hanya berlaku di dalam muka peta,
-  // sementara kop dan legenda tetap ikut tercetak sebagai collar.
-  const query = new URLSearchParams({
-    west, south, east, north,
-    epsg: GEOPDF_EPSG,
-    dpi: PRINT_DPI,
-    pageW: canvas.width,
-    pageH: canvas.height,
-    mapX: mapFace.x,
-    mapY: mapFace.y,
-    mapW: mapFace.w,
-    mapH: mapFace.h,
-    title,
-    author: author || ''
+  const pdfPage = pdfDoc.addPage([mmToPdfUnits(page.width), mmToPdfUnits(page.height)]);
+  const image = await pdfDoc.embedJpg(jpegBytes);
+  pdfPage.drawImage(image, {
+    x: 0,
+    y: 0,
+    width: mmToPdfUnits(page.width),
+    height: mmToPdfUnits(page.height)
   });
 
-  let response;
-  try {
-    response = await fetch(`${GEOPDF_ENDPOINT}?${query}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'image/png' },
-      body: imageBlob
-    });
-  } catch {
-    throw new Error(
-      `Tidak dapat menghubungi layanan GeoPDF di ${GEOPDF_ENDPOINT}. ` +
-        'Pastikan server berjalan (npm run dev, atau npm run server).'
-    );
-  }
+  attachGeoreference(pdfDoc, pdfPage, mapFaceMm, page.height, bounds);
 
-  if (!response.ok) {
-    throw new Error((await response.text()) || `Layanan GeoPDF gagal (HTTP ${response.status}).`);
-  }
-
-  downloadBlob(await response.blob(), fileNameFor(`${title}-avenza`, 'pdf'));
+  const bytes = await pdfDoc.save({ useObjectStreams: false });
+  downloadBlob(new Blob([bytes], { type: 'application/pdf' }), fileNameFor(title, 'pdf'));
 }
 
-/**
- * Satu pintu masuk untuk ketiga jenis ekspor. Penangkapan peta beresolusi
- * cetak dan pembuatan legenda dikerjakan sekali di sini, lalu hasilnya dipakai
- * ulang oleh masing-masing format keluaran.
- */
 export async function runExport(map, settings, kind) {
   const artifacts = await prepareMapArtifacts(map, settings);
-  const { canvas, mapFace } = renderPrintLayout({ ...artifacts, ...settings });
+  const { canvas, page, mapFaceMm } = renderPrintLayout({ ...artifacts, ...settings });
 
-  if (kind === 'geopdf') return exportGeoPdf(canvas, mapFace, artifacts.bounds, settings);
-  return kind === 'pdf' ? exportPdf(canvas, settings) : exportImage(canvas, settings);
+  if (kind !== 'pdf') return exportImage(canvas, settings);
+
+  const b = artifacts.bounds;
+  return exportPdf(canvas, page, mapFaceMm, {
+    west: b.getWest(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    north: b.getNorth()
+  }, settings);
 }

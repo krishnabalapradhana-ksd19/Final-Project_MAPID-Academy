@@ -25,13 +25,9 @@ export function zoomForGroundWidth(lat, groundWidthM, widthPx) {
 }
 
 export function utmZoneInfo(lng, lat) {
-  const zone = Math.floor((lng + 180) / 6) + 1;
-  const south = lat < 0;
   return {
-    zone,
-    hemisphere: south ? 'S' : 'N',
-    epsg: (south ? 32700 : 32600) + zone,
-    label: `WGS 1984 / UTM Zona ${zone}${south ? 'S' : 'N'}`
+    zone: Math.floor((lng + 180) / 6) + 1,
+    hemisphere: lat < 0 ? 'S' : 'N'
   };
 }
 
