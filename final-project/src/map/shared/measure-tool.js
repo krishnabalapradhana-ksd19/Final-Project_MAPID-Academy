@@ -1,5 +1,6 @@
 import proj4 from 'proj4';
 import { UTM_49S_PROJ4 } from '../../shared/geo.js';
+import { fmtArea, fmtDistance } from '../../shared/format.js';
 
 const WGS84 = 'EPSG:4326';
 
@@ -32,19 +33,6 @@ function polygonAreaSqm(coords) {
     area += x1 * y2 - x2 * y1;
   }
   return Math.abs(area) / 2;
-}
-
-function fmtDistance(m) {
-  return m >= 1000
-    ? `${(m / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} km`
-    : `${m.toLocaleString('id-ID', { maximumFractionDigits: 1 })} m`;
-}
-
-function fmtArea(sqm) {
-  const ha = sqm / 10000;
-  return ha >= 1
-    ? `${ha.toLocaleString('id-ID', { maximumFractionDigits: 2 })} Ha`
-    : `${sqm.toLocaleString('id-ID', { maximumFractionDigits: 1 })} m²`;
 }
 
 export class MeasureControl {
@@ -140,6 +128,7 @@ export class MeasureControl {
       type: 'fill',
       source: SOURCE_ID,
       filter: ['==', ['geometry-type'], 'Polygon'],
+      metadata: { legendLabel: 'Hasil Ukur — Luas' },
       paint: { 'fill-color': '#e11d48', 'fill-opacity': 0.18 }
     });
     map.addLayer({
@@ -147,6 +136,7 @@ export class MeasureControl {
       type: 'line',
       source: SOURCE_ID,
       filter: ['all', ['!=', ['geometry-type'], 'Point'], ['!=', ['get', 'preview'], true]],
+      metadata: { legendLabel: 'Hasil Ukur — Jarak' },
       paint: { 'line-color': '#e11d48', 'line-width': 2 }
     });
     map.addLayer({
@@ -161,6 +151,7 @@ export class MeasureControl {
       type: 'circle',
       source: SOURCE_ID,
       filter: ['==', ['geometry-type'], 'Point'],
+      metadata: { legendLabel: 'Hasil Ukur — Titik' },
       paint: { 'circle-color': '#e11d48', 'circle-radius': 4, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 }
     });
   }

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { readdirSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { geoPdfHandler } from './server/geopdf-handler.mjs';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const mapDir = path.join(rootDir, 'src/map');
@@ -38,6 +39,17 @@ function pageAliasPlugin(pages) {
   };
 }
 
+// Endpoint GeoPDF ikut menumpang di server pengembangan, jadi `npm run dev`
+// sudah cukup untuk mencoba ekspor Avenza tanpa menjalankan proses terpisah.
+function geoPdfPlugin() {
+  return {
+    name: 'geopdf-endpoint',
+    configureServer(server) {
+      server.middlewares.use(geoPdfHandler);
+    }
+  };
+}
+
 const pages = collectPages(mapDir);
 const pageInputs = Object.fromEntries(
   [...pages.entries()].map(([file, full]) => [path.basename(file, '.html'), full])
@@ -45,7 +57,7 @@ const pageInputs = Object.fromEntries(
 
 export default defineConfig({
   base: '/Final-Project_MAPID-Academy/',
-  plugins: [pageAliasPlugin(pages)],
+  plugins: [pageAliasPlugin(pages), geoPdfPlugin()],
   build: {
     rollupOptions: {
       input: {

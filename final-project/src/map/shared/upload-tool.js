@@ -185,6 +185,7 @@ export class UploadControl {
       type: 'fill',
       source: SOURCE_ID,
       filter: ['in', ['geometry-type'], ['literal', POLYGON_TYPES]],
+      metadata: { legendLabel: 'Data Unggahan — Area' },
       paint: { 'fill-color': UPLOAD_COLOR, 'fill-opacity': 0.25 }
     });
     map.addLayer({
@@ -192,6 +193,7 @@ export class UploadControl {
       type: 'line',
       source: SOURCE_ID,
       filter: ['in', ['geometry-type'], ['literal', LINE_TYPES]],
+      metadata: { legendLabel: 'Data Unggahan — Garis' },
       paint: { 'line-color': UPLOAD_COLOR, 'line-width': 2 }
     });
     map.addLayer({
@@ -199,6 +201,7 @@ export class UploadControl {
       type: 'circle',
       source: SOURCE_ID,
       filter: ['in', ['geometry-type'], ['literal', POINT_TYPES]],
+      metadata: { legendLabel: 'Data Unggahan — Titik' },
       paint: { 'circle-color': UPLOAD_COLOR, 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 }
     });
 

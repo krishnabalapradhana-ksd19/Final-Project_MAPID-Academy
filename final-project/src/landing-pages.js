@@ -3,6 +3,7 @@ import MAPID_LOGO from './mapid-assets/logo_mapid_hires.png';
 import DIY_LOGO from './prov-diy-assets/diy-logo.svg';
 import WILAYAH_SVG_URL from './prov-diy-assets/diy-wilayah.svg';
 import { REGIONS } from './shared/regions.js';
+import { fmtHa, fmtInt } from './shared/format.js';
 
 const GEOJSON_URL = `${import.meta.env.BASE_URL}data/LBS_DIY_66871HA.geojson`;
 
@@ -71,9 +72,6 @@ const roStat  = document.getElementById('ro-stat');
 const roNote  = document.getElementById('ro-note');
 const roOpen  = document.getElementById('ro-open');
 const metaSel = document.getElementById('meta-sel');
-
-const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
-const fmtInt = (n) => n.toLocaleString('id-ID');
 
 function aggregateByWadmkk(features) {
   const byWadmkk = {};

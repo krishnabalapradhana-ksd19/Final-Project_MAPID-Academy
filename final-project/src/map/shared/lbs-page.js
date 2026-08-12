@@ -5,6 +5,11 @@ import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './base
 import { fetchJsonWithTimeout, loadGeojsonViaWorker } from './data-loading.js';
 import { MeasureControl } from './measure-tool.js';
 import { UploadControl } from './upload-tool.js';
+import { PrintControl } from './print-tool.js';
+import { screenScaleDenominator } from '../../shared/geo.js';
+import { fmtHa, fmtInt, fmtNumber, fmtScale } from '../../shared/format.js';
+
+const categoricalColor = (i) => `hsl(${Math.round((i * 137.508) % 360)}, 65%, 45%)`;
 
 export function createLbsPage(config) {
   const {
@@ -30,9 +35,7 @@ export function createLbsPage(config) {
   let KEC_COLORS = {};
   const setKecamatan = (list) => {
     KEC_ORDER = list;
-    KEC_COLORS = Object.fromEntries(
-      KEC_ORDER.map((kec, i) => [kec, `hsl(${Math.round((i * 137.508) % 360)}, 65%, 45%)`])
-    );
+    KEC_COLORS = Object.fromEntries(KEC_ORDER.map((kec, i) => [kec, categoricalColor(i)]));
   };
 
   function buildLayout() {
@@ -156,15 +159,24 @@ export function createLbsPage(config) {
   }
   buildLayout();
 
+  const basemapLayer = (key) => ({
+    id: 'basemap-layer',
+    type: 'raster',
+    source: 'basemap',
+    metadata: { legendLabel: `Basemap — ${BASEMAPS[key].label}` }
+  });
+
   const map = new maplibregl.Map({
     container: 'map',
     style: {
       version: 8,
       sources: { basemap: toRasterSource(DEFAULT_BASEMAP) },
-      layers: [{ id: 'basemap-layer', type: 'raster', source: 'basemap' }]
+      layers: [basemapLayer(DEFAULT_BASEMAP)]
     },
     center,
-    zoom
+    zoom,
+    // Diperlukan agar kanvas peta bisa dibaca ulang saat ekspor cetak.
+    canvasContextAttributes: { preserveDrawingBuffer: true }
   });
 
   function setBasemap(key) {
@@ -173,7 +185,7 @@ export function createLbsPage(config) {
     if (map.getSource('basemap')) map.removeSource('basemap');
     map.addSource('basemap', toRasterSource(key));
     const beforeId = map.getLayer(FILL_LAYER) ? FILL_LAYER : undefined;
-    map.addLayer({ id: 'basemap-layer', type: 'raster', source: 'basemap' }, beforeId);
+    map.addLayer(basemapLayer(key), beforeId);
   }
 
   class BasemapControl {
@@ -343,11 +355,7 @@ export function createLbsPage(config) {
 
     _update() {
       const { lat } = this._map.getCenter();
-      const zoomNow = this._map.getZoom();
-      const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoomNow);
-      const screenDpi = 96;
-      const scaleDenominator = Math.round((metersPerPixel * screenDpi) / 0.0254);
-      this._container.textContent = `1 : ${scaleDenominator.toLocaleString('id-ID')}`;
+      this._container.textContent = fmtScale(screenScaleDenominator(lat, this._map.getZoom()));
     }
   }
 
@@ -401,8 +409,22 @@ export function createLbsPage(config) {
   const uploadControl = new UploadControl();
   map.addControl(uploadControl, 'top-left');
 
-  const fmtHa = (n) => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
-  const fmtInt = (n) => n.toLocaleString('id-ID');
+  map.addControl(
+    new PrintControl({
+      // Dibaca ulang setiap panel dibuka, jadi judul mengikuti filter kecamatan aktif.
+      getDefaults: () => ({
+        title: `Peta Kerja Lahan Baku Sawah ${activeKec ? `Kecamatan ${activeKec}` : kabLabel}`,
+        subtitle: `${activeKec ? `${activeKec}, ` : ''}${kabLabel}, D.I. Yogyakarta — Tahun 2025`,
+        source: 'Kementerian Pertanian RI — Lahan Baku Sawah (LBS) 2025',
+        agency: `Pemerintah ${kabLabel}`,
+        logo,
+        paper: 'A4',
+        orientation: 'landscape',
+        imageFormat: 'png'
+      })
+    }),
+    'top-left'
+  );
 
   const statusEl = document.getElementById('map-status');
   const statusText = document.getElementById('map-status-text');
@@ -571,7 +593,7 @@ export function createLbsPage(config) {
             : [...new Set(geojson.features.map((f) => f.properties.WADMKC))].sort();
           const colorMatch = ['match', ['get', 'WADMKC']];
           order.forEach((kec, i) => {
-            colorMatch.push(kec, KEC_COLORS[kec] || `hsl(${Math.round((i * 137.508) % 360)}, 65%, 45%)`);
+            colorMatch.push(kec, KEC_COLORS[kec] || categoricalColor(i));
           });
           colorMatch.push('#9a9a9a');
 
@@ -579,12 +601,19 @@ export function createLbsPage(config) {
             id: FILL_LAYER,
             type: 'fill',
             source: SOURCE_ID,
+            // Ringkas: nama kabupaten sudah tertulis di judul peta, dan judul
+            // legenda yang panjang memakan tinggi kolom yang dibutuhkan daftar
+            // kecamatan.
+            metadata: { legendLabel: 'Lahan Baku Sawah per Kecamatan' },
             paint: { 'fill-color': colorMatch, 'fill-opacity': 0.45 }
           });
           map.addLayer({
             id: OUTLINE_LAYER,
             type: 'line',
             source: SOURCE_ID,
+            // Garis batas mewarisi klasifikasi kecamatan yang sama dengan isi
+            // poligon — di legenda cukup satu simbol, tidak perlu diulang.
+            metadata: { legendLabel: 'Garis Batas Bidang', legendCollapse: true },
             paint: { 'line-color': colorMatch, 'line-width': 1 }
           });
 
@@ -615,7 +644,7 @@ export function createLbsPage(config) {
         .map((key) => {
           let value = props[key];
           if (value === null || value === undefined || value === '') value = '-';
-          else if (typeof value === 'number') value = value.toLocaleString('id-ID', { maximumFractionDigits: 3 });
+          else if (typeof value === 'number') value = fmtNumber(value, 3);
           return `<tr><th>${key}</th><td>${value}</td></tr>`;
         })
         .join('');
