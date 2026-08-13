@@ -50,22 +50,28 @@ function buildIdentitas(props) {
 }
 
 function seasonDetail(props, season, yy) {
-  const komo = props[`M${season}_${yy}_KOMO`];
-  const tnm = props[`M${season}_${yy}_TNM`];
-  const pnn = props[`M${season}_${yy}_PNN`];
-  const stat = props[`M${season}_${yy}_STAT`];
+  const prefix = `M${season}_${yy}_`;
+  const rows = [
+    ['Komoditas', 'KOMO'],
+    ['Tanggal Tanam', 'TNM'],
+    ['Tanggal Panen', 'PNN'],
+    ['Status', 'STAT'],
+    ['Pupuk Urea', 'UREA'],
+    ['Pupuk NPK', 'NPK'],
+    ['Pupuk SP36', 'SP36'],
+    ['Pupuk ZA', 'ZA'],
+    ['Pupuk Organik', 'ORGN'],
+    ['Hama/Penyakit', 'HPTK'],
+    ['Produksi (volume)', 'PRDV'],
+    ['Produksi (kg)', 'PRDK']
+  ]
+    .filter(([, suffix]) => prefix + suffix in props)
+    .map(([label, suffix]) => [label, props[prefix + suffix]]);
 
-  const hasData = [komo, tnm, stat].some((val) => val !== null && val !== undefined);
+  const hasData = rows.some(([, value]) => value !== null && value !== undefined && value !== 0);
   if (!hasData) return '<span class="petak-popup-empty">belum ada data</span>';
 
-  return [
-    ['Komoditas', safe(komo)],
-    ['Tanggal Tanam', safe(tnm)],
-    ['Tanggal Panen', safe(pnn)],
-    ['Status', safe(stat)]
-  ]
-    .map(([label, value]) => identityRow(label, value))
-    .join('');
+  return rows.map(([label, value]) => identityRow(label, safe(value))).join('');
 }
 
 function buildMusimTanam(props, activeYear) {
