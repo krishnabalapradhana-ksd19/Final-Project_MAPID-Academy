@@ -8,7 +8,7 @@ import KULON_PROGO_LOGO from '../../assets/logo_kabupaten_kulon_progo.png';
 import YOGYAKARTA_LOGO from '../../assets/logo_kota_yogyakarta.png';
 import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './basemaps.js';
 import { loadGeojsonViaWorker } from './data-loading.js';
-import { bindFeaturePopup, popupHtml } from './feature-popup.js';
+import { bindFeaturePopup, popupHtml, directionButtonHtml } from './feature-popup.js';
 import { buildPopupHTML } from './petak-popup.js';
 import { DropdownControl } from './map-control.js';
 import { MeasureControl } from './measure-tool.js';
@@ -585,12 +585,12 @@ export function createLbsPage(slug) {
 
         popup.setHTML(
           props
-            ? buildPopupHTML(props)
+            ? buildPopupHTML(props, e.lngLat)
             : popupHtml(
                 'Detail Bidang',
                 `<div class="feature-popup-loading">Atribut lengkap gagal dimuat. Kecamatan: ${
                   feature.properties.WADMKC || '-'
-                }</div>`
+                }</div>${directionButtonHtml(e.lngLat.lat, e.lngLat.lng)}`
               )
         );
       }

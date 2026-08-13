@@ -1,4 +1,4 @@
-import { escapeHtml } from './feature-popup.js';
+import { escapeHtml, directionButtonHtml } from './feature-popup.js';
 import { fmtNumber } from '../../shared/format.js';
 
 const fmtDateShort = (date) =>
@@ -101,11 +101,12 @@ function buildRingkasan(props, activeYear) {
   `;
 }
 
-function buildFooter() {
-  return `<div class="petak-popup-footer">Kondisi per ${fmtDateShort(new Date())}</div>`;
+function buildFooter(lngLat) {
+  const direction = lngLat ? directionButtonHtml(lngLat.lat, lngLat.lng) : '';
+  return `<div class="petak-popup-footer">Kondisi per ${fmtDateShort(new Date())}</div>${direction}`;
 }
 
-export function buildPopupHTML(props) {
+export function buildPopupHTML(props, lngLat) {
   const properties = props || {};
   const activeYear = getActiveYear(properties);
 
@@ -115,7 +116,7 @@ export function buildPopupHTML(props) {
       ${buildIdentitas(properties)}
       ${buildMusimTanam(properties, activeYear)}
       ${buildRingkasan(properties, activeYear)}
-      ${buildFooter()}
+      ${buildFooter(lngLat)}
     </div>
   `;
 }
