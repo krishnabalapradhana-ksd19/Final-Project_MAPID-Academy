@@ -8,14 +8,15 @@ import KULON_PROGO_LOGO from '../../assets/logo_kabupaten_kulon_progo.png';
 import YOGYAKARTA_LOGO from '../../assets/logo_kota_yogyakarta.png';
 import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './basemaps.js';
 import { loadGeojsonViaWorker } from './data-loading.js';
-import { bindFeaturePopup, popupHtml, propsTable } from './feature-popup.js';
+import { bindFeaturePopup, popupHtml } from './feature-popup.js';
+import { buildPopupHTML } from './petak-popup.js';
 import { DropdownControl } from './map-control.js';
 import { MeasureControl } from './measure-tool.js';
 import { UploadControl } from './upload-tool.js';
 import { PrintControl } from './print-tool.js';
 import { fetchJsonWithTimeout } from '../../shared/fetch-json.js';
 import { screenScaleDenominator } from '../../shared/geo.js';
-import { fmtHa, fmtInt, fmtNumber, fmtScale } from '../../shared/format.js';
+import { fmtHa, fmtInt, fmtScale } from '../../shared/format.js';
 import { regionBy } from '../../shared/regions.js';
 
 const LOGOS = {
@@ -583,14 +584,14 @@ export function createLbsPage(slug) {
         const props = attrs?.[feature.properties._fid];
 
         popup.setHTML(
-          popupHtml(
-            'Detail Bidang',
-            props
-              ? propsTable(props, (value) => (typeof value === 'number' ? fmtNumber(value, 3) : value))
-              : `<div class="feature-popup-loading">Atribut lengkap gagal dimuat. Kecamatan: ${
+          props
+            ? buildPopupHTML(props)
+            : popupHtml(
+                'Detail Bidang',
+                `<div class="feature-popup-loading">Atribut lengkap gagal dimuat. Kecamatan: ${
                   feature.properties.WADMKC || '-'
                 }</div>`
-          )
+              )
         );
       }
     });
