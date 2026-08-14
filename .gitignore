@@ -62,3 +62,6 @@ final-project/data-raw/
 # --- Google Service Account credentials (never commit) ---
 google-drive-integration/credentials.json
 credentials.json
+
+# --- Local notes ---
+Explanation.md
