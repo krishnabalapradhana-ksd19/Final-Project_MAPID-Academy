@@ -1,6 +1,6 @@
 import { runExport } from './print-export.js';
 import { loadImage, PAPER_SIZES } from './print-layout.js';
-import { controlButton } from './map-control.js';
+import { closeActiveControl, controlButton } from './map-control.js';
 
 const EXPORT_LABELS = {
   pdf: 'Menyusun layout PDF berkoordinat…',
@@ -120,6 +120,7 @@ export class PrintControl {
   }
 
   _open() {
+    closeActiveControl();
     const defaults = this._getDefaults();
     Object.entries(defaults).forEach(([key, value]) => {
       const field = this._overlay.querySelector(`[data-field="${key}"]`);

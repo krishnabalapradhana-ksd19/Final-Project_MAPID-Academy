@@ -1,17 +1,30 @@
 import { escapeHtml, directionButtonHtml } from './feature-popup.js';
-import { fmtNumber } from '../../shared/format.js';
+import {
+  blankEditableKeys,
+  displayValue,
+  fieldDef,
+  getActiveYear,
+  IDENTITAS_KEYS,
+  seasonKeys
+} from './attr-schema.js';
 
 const fmtDateShort = (date) =>
   [date.getDate(), date.getMonth() + 1, date.getFullYear()]
     .map((part, i) => (i < 2 ? String(part).padStart(2, '0') : part))
     .join('/');
 
-const safe = (val) => (val === null || val === undefined || val === '' ? '-' : escapeHtml(val));
+/** Penanda visual untuk field yang belum terisi. */
+const EMPTY_MARK =
+  '<span class="petak-popup-blank" title="Data belum diisi">' +
+  '<span class="petak-popup-warn" aria-hidden="true">!</span>Belum diisi</span>';
 
-const getActiveYear = (props) => {
-  const ipKey = Object.keys(props || {}).find((key) => /^MT_\d{4}_IP$/.test(key));
-  return ipKey ? ipKey.match(/^MT_(\d{4})_IP$/)[1] : String(new Date().getFullYear());
+const valueHtml = (props, key) => {
+  const shown = displayValue(key, props[key]);
+  return shown === null ? EMPTY_MARK : escapeHtml(shown);
 };
+
+const EDIT_ICON =
+  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 
 function identityRow(label, value) {
   return `
@@ -22,56 +35,35 @@ function identityRow(label, value) {
   `;
 }
 
+/** Baris label+nilai untuk satu kunci atribut, label diambil dari skema. */
+function fieldRow(props, key) {
+  return identityRow(fieldDef(key)?.label || key, valueHtml(props, key));
+}
+
 function buildHeader(props) {
   return `
-    <div class="petak-popup-title">${safe(props.ID_PETAK)}</div>
-    <div class="petak-popup-subtitle">Pemanfaatan hari ini: <strong>${safe(props.KOND_SKRNG)}</strong></div>
+    <div class="petak-popup-title">${valueHtml(props, 'ID_PETAK')}</div>
+    <div class="petak-popup-subtitle">Pemanfaatan hari ini: <strong>${valueHtml(props, 'KOND_SKRNG')}</strong></div>
   `;
 }
 
 function buildIdentitas(props) {
-  const luas = props.LUAS === null || props.LUAS === undefined ? '-' : `${fmtNumber(props.LUAS, 2)} ha`;
-  const rows = [
-    ['Kecamatan', safe(props.WADMKC)],
-    ['Desa', safe(props.WADMKD)],
-    ['Poktan', safe(props.POKTAN)],
-    ['Luas', luas],
-    ['Jenis Lahan', safe(props.JNS_LAHAN)],
-    ['Jenis Sawah', safe(props.JNS_SAWAH)],
-    ['Penggarap', safe(props.PENGGARAP)],
-    ['Pemilik', safe(props.PEMILIK)],
-    ['Penyuluh', safe(props.PENYULUH)]
-  ];
+  const rows = IDENTITAS_KEYS.filter((key) => key in props)
+    .map((key) => fieldRow(props, key))
+    .join('');
 
   return `
     <div class="popup-section-title">IDENTITAS PETAK</div>
-    <div class="petak-popup-grid">${rows.map(([label, value]) => identityRow(label, value)).join('')}</div>
+    <div class="petak-popup-grid">${rows}</div>
   `;
 }
 
 function seasonDetail(props, season, yy) {
-  const prefix = `M${season}_${yy}_`;
-  const rows = [
-    ['Komoditas', 'KOMO'],
-    ['Tanggal Tanam', 'TNM'],
-    ['Tanggal Panen', 'PNN'],
-    ['Status', 'STAT'],
-    ['Pupuk Urea', 'UREA'],
-    ['Pupuk NPK', 'NPK'],
-    ['Pupuk SP36', 'SP36'],
-    ['Pupuk ZA', 'ZA'],
-    ['Pupuk Organik', 'ORGN'],
-    ['Hama/Penyakit', 'HPTK'],
-    ['Produksi (volume)', 'PRDV'],
-    ['Produksi (kg)', 'PRDK']
-  ]
-    .filter(([, suffix]) => prefix + suffix in props)
-    .map(([label, suffix]) => [label, props[prefix + suffix]]);
+  const keys = seasonKeys(props, season, yy);
+  const hasData = keys.some((key) => displayValue(key, props[key]) !== null);
+  if (!hasData) return `<span class="petak-popup-empty">${EMPTY_MARK}</span>`;
 
-  const hasData = rows.some(([, value]) => value !== null && value !== undefined && value !== 0);
-  if (!hasData) return '<span class="petak-popup-empty">belum ada data</span>';
-
-  return rows.map(([label, value]) => identityRow(label, safe(value))).join('');
+  return keys.map((key) => fieldRow(props, key)).join('');
 }
 
 function buildMusimTanam(props, activeYear) {
@@ -95,24 +87,38 @@ function buildMusimTanam(props, activeYear) {
 
 function buildRingkasan(props, activeYear) {
   const yy = activeYear.slice(-2);
-  const rows = [
-    [`IP ${activeYear}`, safe(props[`MT_${activeYear}_IP`])],
-    ['Pola Tanam', safe(props[`MT${yy}_POLA`])],
-    ['Keterangan', safe(props.KETERANGAN)]
-  ];
+  const rows = [`MT_${activeYear}_IP`, `MT${yy}_POLA`, 'KETERANGAN']
+    .filter((key) => key in props)
+    .map((key) => fieldRow(props, key))
+    .join('');
 
   return `
     <div class="popup-section-title">RINGKASAN TAHUN</div>
-    <div class="petak-popup-grid">${rows.map(([label, value]) => identityRow(label, value)).join('')}</div>
+    <div class="petak-popup-grid">${rows}</div>
   `;
 }
 
-function buildFooter(lngLat) {
-  const direction = lngLat ? directionButtonHtml(lngLat.lat, lngLat.lng) : '';
-  return `<div class="petak-popup-footer">Kondisi per ${fmtDateShort(new Date())}</div>${direction}`;
+/** Tombol pembuka form; hanya muncul bila masih ada field kosong yang bisa diisi. */
+function buildEditButton(props, fid) {
+  const blanks = blankEditableKeys(props);
+  if (!blanks.length || fid === undefined || fid === null) return '';
+  return `
+    <button type="button" class="attr-edit-btn" data-fid="${escapeHtml(fid)}">
+      ${EDIT_ICON}<span>Lengkapi Data (${blanks.length} field kosong)</span>
+    </button>
+  `;
 }
 
-export function buildPopupHTML(props, lngLat) {
+function buildFooter(props, lngLat, fid) {
+  const direction = lngLat ? directionButtonHtml(lngLat.lat, lngLat.lng) : '';
+  return `
+    <div class="petak-popup-footer">Kondisi per ${fmtDateShort(new Date())}</div>
+    ${buildEditButton(props, fid)}
+    ${direction}
+  `;
+}
+
+export function buildPopupHTML(props, lngLat, { fid } = {}) {
   const properties = props || {};
   const activeYear = getActiveYear(properties);
 
@@ -122,7 +128,7 @@ export function buildPopupHTML(props, lngLat) {
       ${buildIdentitas(properties)}
       ${buildMusimTanam(properties, activeYear)}
       ${buildRingkasan(properties, activeYear)}
-      ${buildFooter(lngLat)}
+      ${buildFooter(properties, lngLat, fid)}
     </div>
   `;
 }

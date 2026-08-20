@@ -14,6 +14,18 @@ export function controlButton({ icon, title, ariaLabel, onClick }) {
   return button;
 }
 
+/**
+ * Satu-satunya sumber kebenaran "tool mana yang sedang aktif" di toolbar peta.
+ * Hanya satu control boleh terbuka; membuka yang lain otomatis menutup yang lama,
+ * dan tiap control membereskan state-nya sendiri lewat hook onClose().
+ */
+let activeControl = null;
+
+/** Tutup tool yang sedang aktif (dipakai juga saat dialog modal dibuka). */
+export function closeActiveControl() {
+  if (activeControl) activeControl.close();
+}
+
 export class DropdownControl {
   constructor({ icon, title, ariaLabel, label, placement = 'right' }) {
     this._config = { icon, title, ariaLabel, label, placement };
@@ -32,7 +44,7 @@ export class DropdownControl {
       ariaLabel,
       onClick: (e) => {
         e.stopPropagation();
-        this._container.classList.toggle('open');
+        this.toggle();
       }
     });
 
@@ -53,17 +65,46 @@ export class DropdownControl {
 
   onRemove() {
     document.removeEventListener('click', this._onDocumentClick);
+    this.close();
     this._container.remove();
     this._map = undefined;
   }
 
-  close() {
-    this._container.classList.remove('open');
+  isOpen() {
+    return this._container.classList.contains('open');
   }
 
+  open() {
+    if (this.isOpen()) return;
+    // Membuka tool baru selalu mematikan tool sebelumnya.
+    if (activeControl && activeControl !== this) activeControl.close();
+    activeControl = this;
+    this._container.classList.add('open');
+    this.onOpen();
+  }
+
+  close() {
+    if (!this.isOpen()) return;
+    this._container.classList.remove('open');
+    if (activeControl === this) activeControl = null;
+    this.onClose();
+  }
+
+  /** Klik ulang pada tool yang sedang aktif akan mematikannya. */
+  toggle() {
+    if (this.isOpen()) this.close();
+    else this.open();
+  }
+
+  /** Cegah menu tertutup oleh klik di luar (mis. saat sedang menggambar). */
   keepOpen() {
     return false;
   }
 
   buildMenu() {}
+
+  onOpen() {}
+
+  /** Tempat tiap control membereskan mode/listener-nya saat tool dimatikan. */
+  onClose() {}
 }

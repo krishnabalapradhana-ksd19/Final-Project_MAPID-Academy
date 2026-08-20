@@ -142,6 +142,14 @@ export class MeasureControl extends DropdownControl {
     });
   }
 
+  /** Tool dimatikan (langsung atau karena tool lain dibuka): hentikan mode ukur. */
+  onClose() {
+    if (!this._mode) return;
+    this._mode = null;
+    this._modeButtons.forEach((btn) => btn.classList.remove('active'));
+    this._finish();
+  }
+
   _setMode(mode) {
     this._mode = mode;
     this._coords = [];

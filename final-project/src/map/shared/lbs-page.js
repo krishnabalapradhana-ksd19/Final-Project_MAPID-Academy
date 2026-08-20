@@ -10,13 +10,20 @@ import { BASEMAPS, BASEMAP_ORDER, DEFAULT_BASEMAP, toRasterSource } from './base
 import { loadGeojsonViaWorker } from './data-loading.js';
 import { bindFeaturePopup, popupHtml, directionButtonHtml } from './feature-popup.js';
 import { buildPopupHTML } from './petak-popup.js';
+import { blankEditableKeys, bulkEditableKeys, bulkPlaceholder } from './attr-schema.js';
+import { countEdits, getEdit, loadEdits, mergeProps, saveEdit } from './attr-store.js';
+import { openAttrForm } from './attr-form.js';
+import { exportGeojson } from './attr-export.js';
+import { showToast } from './toast.js';
 import { DropdownControl } from './map-control.js';
 import { MeasureControl } from './measure-tool.js';
 import { UploadControl } from './upload-tool.js';
 import { PrintControl } from './print-tool.js';
+import { SelectControl } from './select-tool.js';
+import { ExportControl } from './export-tool.js';
 import { fetchJsonWithTimeout } from '../../shared/fetch-json.js';
 import { screenScaleDenominator } from '../../shared/geo.js';
-import { fmtHa, fmtInt, fmtScale } from '../../shared/format.js';
+import { fmtFileStamp, fmtHa, fmtInt, fmtScale } from '../../shared/format.js';
 import { regionBy } from '../../shared/regions.js';
 
 const LOGOS = {
@@ -29,6 +36,7 @@ const LOGOS = {
 
 const REGION_BY_SLUG = regionBy('slug');
 const STAT_IDS = ['stat-total', 'stat-count', 'stat-avg', 'stat-pct'];
+const EXPORT_LABEL = 'Unduh GeoJSON Hasil Update';
 const COORD_PATTERN = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/;
 
 const categoricalColor = (i) => `hsl(${Math.round((i * 137.508) % 360)}, 65%, 45%)`;
@@ -151,12 +159,20 @@ export function createLbsPage(slug) {
   const SOURCE_ID = `lbs-${slug}`;
   const FILL_LAYER = `lbs-${slug}-fill`;
   const OUTLINE_LAYER = `lbs-${slug}-outline`;
+  const SELECTED_FILL_LAYER = `lbs-${slug}-selected-fill`;
+  const SELECTED_LINE_LAYER = `lbs-${slug}-selected-line`;
 
   let kecOrder = [];
   let kecColors = {};
   let stats = null;
   let attrsPromise = null;
   let activeKec = '';
+  let geojsonData = null;
+  let attrsData = null;
+  /** Konteks popup yang sedang terbuka — dipakai untuk refresh setelah data disimpan. */
+  let activePetak = null;
+  /** _fid petak hasil seleksi lasso/kotak. */
+  let selectedFids = [];
 
   document.getElementById('app').innerHTML = `
     <header class="topbar">
@@ -271,6 +287,30 @@ export function createLbsPage(slug) {
             <div class="bar-row-skeleton"></div>
           </div>
         </div>
+
+        <div class="panel-section" id="selection-section" hidden>
+          <div class="section-label">Seleksi Petak</div>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Petak Terpilih</div>
+              <div class="stat-value" id="sel-count">0</div>
+              <div class="stat-unit">Bidang</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Luas Terpilih</div>
+              <div class="stat-value" id="sel-luas">–</div>
+              <div class="stat-unit">Hektar</div>
+            </div>
+          </div>
+          <button class="panel-action panel-action-primary" type="button" id="bulk-edit">Isi Atribut</button>
+          <button class="panel-action" type="button" id="clear-selection">Bersihkan Seleksi</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-label">Data Atribut</div>
+          <p class="panel-note" id="edit-count">Belum ada bidang yang dilengkapi.</p>
+          <button class="panel-action" type="button" id="export-geojson">${EXPORT_LABEL}</button>
+        </div>
       </aside>
     </div>
   `;
@@ -361,6 +401,20 @@ export function createLbsPage(slug) {
   map.addControl(measureControl, 'top-left');
   const uploadControl = new UploadControl();
   map.addControl(uploadControl, 'top-left');
+
+  const selectControl = new SelectControl({
+    layerId: FILL_LAYER,
+    onChange: (fids) => setSelection(fids),
+    onEdit: () => openBulkEditForm()
+  });
+  map.addControl(selectControl, 'top-left');
+
+  const exportControl = new ExportControl({
+    loadRows: loadExportRows,
+    fileBaseName: () => `lbs-${slug}-${selectedFids.length ? 'seleksi' : 'semua'}-${fmtFileStamp()}`,
+    notify: showToast
+  });
+  map.addControl(exportControl, 'top-left');
 
   map.addControl(
     new PrintControl({
@@ -528,6 +582,7 @@ export function createLbsPage(slug) {
     loadGeojsonViaWorker(GEOJSON_URL, { timeoutMs: 25000 })
       .then((geojson) => {
         statusEl.hidden = true;
+        geojsonData = geojson;
 
         if (map.getSource(SOURCE_ID)) {
           map.getSource(SOURCE_ID).setData(geojson);
@@ -555,46 +610,227 @@ export function createLbsPage(slug) {
             paint: { 'line-color': colorMatch, 'line-width': 1 }
           });
 
+          addSelectionLayers();
           setupFeaturePopup();
           syncLayerState();
         }
 
         if (stats?.bbox) map.fitBounds(stats.bbox, { padding: 40 });
-        attrsPromise = fetchJsonWithTimeout(ATTRS_URL, { timeoutMs: 30000 }).catch((err) => {
-          console.warn(`[lbs-${slug}] Gagal memuat atribut detail:`, err.message);
-          return null;
-        });
+        attrsPromise = fetchJsonWithTimeout(ATTRS_URL, { timeoutMs: 30000 })
+          .then((data) => {
+            attrsData = data;
+            renderSelectionSummary();
+            return data;
+          })
+          .catch((err) => {
+            console.warn(`[lbs-${slug}] Gagal memuat atribut detail:`, err.message);
+            return null;
+          });
       })
       .catch((err) => {
         showStatus(`Gagal memuat poligon: ${err.message}`, { error: true, retry: loadPolygons });
       });
   }
 
+  /** Layer sorotan petak terseleksi — difilter berdasarkan daftar _fid. */
+  function addSelectionLayers() {
+    map.addLayer({
+      id: SELECTED_FILL_LAYER,
+      type: 'fill',
+      source: SOURCE_ID,
+      filter: selectionFilter([]),
+      metadata: { legendLabel: 'Petak Terseleksi' },
+      paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.55 }
+    });
+    map.addLayer({
+      id: SELECTED_LINE_LAYER,
+      type: 'line',
+      source: SOURCE_ID,
+      filter: selectionFilter([]),
+      metadata: { legendLabel: 'Batas Petak Terseleksi', legendCollapse: true },
+      paint: { 'line-color': '#0369a1', 'line-width': 2 }
+    });
+  }
+
+  const selectionFilter = (fids) => ['in', ['get', '_fid'], ['literal', fids]];
+
+  function setSelection(fids) {
+    selectedFids = fids;
+
+    if (map.getLayer(SELECTED_FILL_LAYER)) {
+      map.setFilter(SELECTED_FILL_LAYER, selectionFilter(fids));
+      map.setFilter(SELECTED_LINE_LAYER, selectionFilter(fids));
+    }
+
+    renderSelectionSummary();
+  }
+
+  /** Luas total seleksi (Ha) — dihitung dari luas geometri seperti kartu statistik. */
+  function selectedLuasHa() {
+    if (!attrsData) return null;
+    return selectedFids.reduce((total, fid) => {
+      const props = attrsData[fid];
+      if (!props) return total;
+      return total + (props.LUAS_M2_UTM49S ?? 0) / 10000;
+    }, 0);
+  }
+
+  /** Satu sumber teks ringkasan untuk panel, menu seleksi, dan menu export. */
+  function renderSelectionSummary() {
+    const count = selectedFids.length;
+    const luasHa = selectedLuasHa();
+    const luasText = luasHa === null ? '–' : fmtHa(luasHa);
+
+    document.getElementById('selection-section').hidden = !count;
+    document.getElementById('sel-count').textContent = fmtInt(count);
+    document.getElementById('sel-luas').textContent = luasText;
+
+    document.getElementById('bulk-edit').textContent = `Isi Atribut (${fmtInt(count)})`;
+    selectControl.setSelectionInfo({
+      count,
+      text: count ? `${fmtInt(count)} petak terpilih · ${luasText} Ha` : ''
+    });
+    exportControl.setSourceLabel(
+      count
+        ? `Sumber: ${fmtInt(count)} petak terseleksi.`
+        : `Sumber: seluruh petak${attrsData ? ` (${fmtInt(attrsData.length)})` : ''}. Pilih petak dulu untuk export sebagian.`
+    );
+  }
+
+  /** Atribut terkini (asli + hasil edit) untuk sekumpulan _fid. */
+  function mergedPropsOf(fids) {
+    return fids.filter((fid) => attrsData?.[fid]).map((fid) => mergeProps(attrsData[fid], getEdit(slug, fid)));
+  }
+
+  /**
+   * Form isian massal: memakai komponen form yang sama dengan "Lengkapi Data",
+   * hanya daftar field dan placeholder-nya yang berbeda. Field yang dibiarkan
+   * kosong tidak ikut dikirim, jadi nilai lama tiap petak tetap utuh.
+   */
+  function openBulkEditForm() {
+    if (!selectedFids.length) return;
+    if (!attrsData) {
+      showToast('Atribut petak belum selesai dimuat.', { error: true });
+      return;
+    }
+
+    const propsList = mergedPropsOf(selectedFids);
+    const keys = bulkEditableKeys(propsList);
+    const placeholders = Object.fromEntries(keys.map((key) => [key, bulkPlaceholder(key, propsList)]));
+    const count = selectedFids.length;
+
+    openAttrForm({
+      title: 'Isi Atribut Massal',
+      subtitle: `${fmtInt(count)} petak terseleksi — field yang dikosongkan tidak akan mengubah data lama.`,
+      keys,
+      placeholders,
+      submitLabel: `Update (${fmtInt(count)})`,
+      onSave: (patch) => {
+        selectedFids.forEach((fid) => saveEdit(slug, fid, patch));
+        if (activePetak && selectedFids.includes(activePetak.fid)) renderPetakPopup();
+        updateEditCount();
+        showToast(`${fmtInt(count)} petak berhasil diperbarui`);
+      }
+    });
+  }
+
+  /** Atribut petak yang akan diekspor: hasil seleksi, atau seluruh petak bila tidak ada seleksi. */
+  async function loadExportRows() {
+    const attrs = await (attrsPromise || Promise.resolve(null));
+    if (!attrs) throw new Error('Atribut petak belum tersedia.');
+
+    const fids = selectedFids.length ? selectedFids : attrs.map((_, i) => i);
+    return mergedPropsOf(fids);
+  }
+
   function setupFeaturePopup() {
     bindFeaturePopup(map, [FILL_LAYER], {
-      skip: (e) => measureControl.isActive() || uploadControl.hasFeatureAt(e.point),
+      skip: (e) => measureControl.isActive() || selectControl.isActive() || uploadControl.hasFeatureAt(e.point),
       render: async (e, popup) => {
-        const feature = e.features[0];
+        const fid = e.features[0].properties._fid;
+        const wadmkc = e.features[0].properties.WADMKC;
         popup
           .setLngLat(e.lngLat)
           .setHTML(popupHtml('Detail Bidang', '<div class="feature-popup-loading">Memuat atribut…</div>'))
           .addTo(map);
 
         const attrs = await (attrsPromise || Promise.resolve(null));
-        const props = attrs?.[feature.properties._fid];
+        const base = attrs?.[fid];
 
-        popup.setHTML(
-          props
-            ? buildPopupHTML(props, e.lngLat)
-            : popupHtml(
-                'Detail Bidang',
-                `<div class="feature-popup-loading">Atribut lengkap gagal dimuat. Kecamatan: ${
-                  feature.properties.WADMKC || '-'
-                }</div>${directionButtonHtml(e.lngLat.lat, e.lngLat.lng)}`
-              )
-        );
+        if (!base) {
+          activePetak = null;
+          popup.setHTML(
+            popupHtml(
+              'Detail Bidang',
+              `<div class="feature-popup-loading">Atribut lengkap gagal dimuat. Kecamatan: ${
+                wadmkc || '-'
+              }</div>${directionButtonHtml(e.lngLat.lat, e.lngLat.lng)}`
+            )
+          );
+          return;
+        }
+
+        // Atribut asli di-override oleh hasil edit yang tersimpan (localStorage).
+        activePetak = { fid, base, popup, lngLat: e.lngLat };
+        renderPetakPopup();
       }
     });
+  }
+
+  /** Render ulang popup bidang aktif memakai atribut terbaru (asli + hasil edit). */
+  function renderPetakPopup() {
+    const { fid, base, popup, lngLat } = activePetak;
+    if (!popup.isOpen()) return;
+    popup.setHTML(buildPopupHTML(mergeProps(base, getEdit(slug, fid)), lngLat, { fid }));
+  }
+
+  function openEditForm() {
+    if (!activePetak) return;
+    const { fid, base } = activePetak;
+    const props = mergeProps(base, getEdit(slug, fid));
+
+    openAttrForm({
+      subtitle: `Bidang #${fid} — ${props.WADMKD || '-'}, ${props.WADMKC || '-'}`,
+      keys: blankEditableKeys(props),
+      onSave: (patch) => {
+        saveEdit(slug, fid, patch);
+        renderPetakPopup();
+        updateEditCount();
+        showToast('Data berhasil disimpan');
+      }
+    });
+  }
+
+  function updateEditCount() {
+    const total = countEdits(slug);
+    document.getElementById('edit-count').textContent = total
+      ? `${fmtInt(total)} bidang sudah dilengkapi (tersimpan di browser ini).`
+      : 'Belum ada bidang yang dilengkapi.';
+  }
+
+  async function handleExport() {
+    const button = document.getElementById('export-geojson');
+    if (!geojsonData) {
+      showToast('Poligon belum selesai dimuat.', { error: true });
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = 'Menyiapkan berkas…';
+    // Beri kesempatan browser repaint sebelum penggabungan data yang berat.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    try {
+      const attrs = await (attrsPromise || Promise.resolve(null));
+      if (!attrs) throw new Error('Atribut lengkap belum tersedia.');
+      const count = exportGeojson({ slug, geojson: geojsonData, attrs, edits: loadEdits(slug) });
+      showToast(`GeoJSON ${fmtInt(count)} bidang berhasil diunduh`);
+    } catch (err) {
+      showToast(`Gagal mengekspor: ${err.message}`, { error: true });
+    } finally {
+      button.disabled = false;
+      button.textContent = EXPORT_LABEL;
+    }
   }
 
   map.on('load', () => {
@@ -602,6 +838,16 @@ export function createLbsPage(slug) {
     setupSearch();
     document.querySelector('#kec-filter .chip[data-kec=""]').addEventListener('click', () => setActiveKec(''));
     document.getElementById('panel-error-retry').addEventListener('click', loadStats);
+    document.getElementById('export-geojson').addEventListener('click', handleExport);
+    document.getElementById('clear-selection').addEventListener('click', () => selectControl.clearSelection());
+    document.getElementById('bulk-edit').addEventListener('click', openBulkEditForm);
+    updateEditCount();
+    renderSelectionSummary();
+
+    // Tombol di dalam popup dibuat ulang tiap render, jadi listener-nya didelegasikan.
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.attr-edit-btn')) openEditForm();
+    });
 
     const geolocateBtn = document.querySelector('.maplibregl-ctrl-geolocate');
     if (geolocateBtn) {

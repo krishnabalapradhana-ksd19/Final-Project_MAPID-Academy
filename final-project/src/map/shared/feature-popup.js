@@ -1,4 +1,5 @@
 import maplibregl from 'maplibre-gl';
+import { isBlank } from './attr-schema.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
@@ -11,7 +12,7 @@ export function propsTable(props, formatValue = (value) => value) {
   const rows = keys
     .map((key) => {
       const value = props[key];
-      const shown = value === null || value === undefined || value === '' ? '-' : formatValue(value);
+      const shown = isBlank(value) ? '-' : formatValue(value);
       return `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(shown)}</td></tr>`;
     })
     .join('');

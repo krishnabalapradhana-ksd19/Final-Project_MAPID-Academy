@@ -262,10 +262,34 @@ body {
   top: 0;
   padding: 10px;
   min-width: 210px;
+  max-width: min(280px, calc(100vw - 90px));
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(11, 11, 11, 0.16);
+}
+
+/*
+ * MapLibre memaksa SEMUA button di dalam .maplibregl-ctrl-group jadi kotak ikon
+ * 29x29 px tanpa padding (`.maplibregl-ctrl-group button`, spesifisitas 0,1,1).
+ * Aturan itu ikut mengenai tombol di dalam menu dropdown sehingga labelnya
+ * meluber dan saling menimpa. Reset di bawah spesifisitasnya 0,2,1 agar menang.
+ */
+.map-dropdown .dropdown-menu button {
+  width: auto;
+  height: auto;
+  border-top: 0;
+}
+
+/*
+ * MapLibre juga menetapkan `display:block` pada tombol-tombol itu. Deklarasi
+ * author mana pun mengalahkan aturan `[hidden]` bawaan browser, sehingga atribut
+ * `hidden` pada tombol di dalam menu tidak berefek tanpa penegasan berikut.
+ */
+.map-dropdown .dropdown-menu button[hidden] {
+  display: none;
 }
 
 .map-dropdown.place-left .dropdown-menu {
@@ -316,12 +340,15 @@ body {
   gap: 2px;
 }
 
-.dropdown-option {
+/* Diberi awalan .dropdown-menu supaya padding-nya menang atas reset MapLibre. */
+.dropdown-menu .dropdown-option {
+  width: 100%;
   border: 0;
   background: none;
   text-align: left;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--text-secondary);
   padding: 8px;
   border-radius: 6px;
@@ -844,6 +871,208 @@ body {
 .feature-popup-direction-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.petak-popup-blank {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #b91c1c;
+  font-style: italic;
+}
+.petak-popup-warn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #b91c1c;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  font-style: normal;
+  flex: none;
+}
+.petak-popup-title .petak-popup-blank {
+  font-size: 12px;
+}
+.attr-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.attr-edit-btn:hover {
+  background: var(--accent-soft);
+}
+.panel-note {
+  margin: 8px 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.panel-action {
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--accent-dark);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+.panel-action:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.panel-action:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.panel-action-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.panel-action-primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+.stat-grid + .panel-action {
+  margin-top: 10px;
+}
+.panel-action + .panel-action {
+  margin-top: 6px;
+}
+.export-source {
+  border-bottom: 1px solid var(--gridline);
+  padding-bottom: 8px;
+}
+.export-option.is-disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.export-option.is-disabled:hover {
+  background: none;
+}
+.select-edit {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.select-edit:hover {
+  background: var(--accent-dark);
+}
+.attr-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: min(640px, 100%);
+  overflow: hidden;
+}
+.attr-dialog-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.attr-form {
+  overflow-y: auto;
+  min-height: 0;
+  gap: 8px;
+}
+.attr-form-group {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  border-bottom: 1px solid var(--gridline);
+  padding-bottom: 4px;
+}
+.attr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.attr-field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.attr-field > span em {
+  font-weight: 400;
+  font-style: normal;
+  color: var(--text-muted);
+}
+.attr-field input,
+.attr-field select,
+.attr-field textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  resize: vertical;
+}
+.attr-field input:focus,
+.attr-field select:focus,
+.attr-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.attr-field.is-invalid input,
+.attr-field.is-invalid select,
+.attr-field.is-invalid textarea {
+  border-color: #b91c1c;
+}
+.attr-field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.attr-field-error {
+  font-size: 11px;
+  color: #b91c1c;
+}
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(11, 11, 11, 0.28);
+  opacity: 1;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast.is-error {
+  background: #b91c1c;
+}
+.toast.is-leaving {
+  opacity: 0;
+  transform: translateY(6px);
 }
 .maplibregl-ctrl-bottom-right {
   right: 8px !important;

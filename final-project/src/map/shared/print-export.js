@@ -1,20 +1,10 @@
 import { PDFDocument } from 'pdf-lib';
 import { fmtFileStamp, slugify } from '../../shared/format.js';
+import { downloadBlob } from '../../shared/download.js';
 import { prepareMapArtifacts, renderPrintLayout } from './print-layout.js';
 import { attachGeoreference, mmToPdfUnits } from './geopdf.js';
 
 const JPEG_QUALITY = 0.92;
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function canvasToBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => {
