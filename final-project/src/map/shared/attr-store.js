@@ -60,8 +60,3 @@ export function saveEdit(slug, fid, patch) {
 
   return edits[fid];
 }
-
-/** Jumlah bidang yang sudah pernah diedit — dipakai untuk info di panel. */
-export function countEdits(slug) {
-  return Object.keys(loadEdits(slug)).length;
-}

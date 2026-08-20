@@ -11,9 +11,8 @@ import { loadGeojsonViaWorker } from './data-loading.js';
 import { bindFeaturePopup, popupHtml, directionButtonHtml } from './feature-popup.js';
 import { buildPopupHTML } from './petak-popup.js';
 import { blankEditableKeys, bulkEditableKeys, bulkPlaceholder } from './attr-schema.js';
-import { countEdits, getEdit, loadEdits, mergeProps, saveEdit } from './attr-store.js';
+import { getEdit, mergeProps, saveEdit } from './attr-store.js';
 import { openAttrForm } from './attr-form.js';
-import { exportGeojson } from './attr-export.js';
 import { showToast } from './toast.js';
 import { DropdownControl } from './map-control.js';
 import { MeasureControl } from './measure-tool.js';
@@ -36,7 +35,6 @@ const LOGOS = {
 
 const REGION_BY_SLUG = regionBy('slug');
 const STAT_IDS = ['stat-total', 'stat-count', 'stat-avg', 'stat-pct'];
-const EXPORT_LABEL = 'Unduh GeoJSON Hasil Update';
 const COORD_PATTERN = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/;
 
 const categoricalColor = (i) => `hsl(${Math.round((i * 137.508) % 360)}, 65%, 45%)`;
@@ -167,7 +165,6 @@ export function createLbsPage(slug) {
   let stats = null;
   let attrsPromise = null;
   let activeKec = '';
-  let geojsonData = null;
   let attrsData = null;
   /** Konteks popup yang sedang terbuka — dipakai untuk refresh setelah data disimpan. */
   let activePetak = null;
@@ -306,11 +303,6 @@ export function createLbsPage(slug) {
           <button class="panel-action" type="button" id="clear-selection">Bersihkan Seleksi</button>
         </div>
 
-        <div class="panel-section">
-          <div class="section-label">Data Atribut</div>
-          <p class="panel-note" id="edit-count">Belum ada bidang yang dilengkapi.</p>
-          <button class="panel-action" type="button" id="export-geojson">${EXPORT_LABEL}</button>
-        </div>
       </aside>
     </div>
   `;
@@ -584,7 +576,6 @@ export function createLbsPage(slug) {
     loadGeojsonViaWorker(GEOJSON_URL, { timeoutMs: 25000 })
       .then((geojson) => {
         statusEl.hidden = true;
-        geojsonData = geojson;
 
         if (map.getSource(SOURCE_ID)) {
           map.getSource(SOURCE_ID).setData(geojson);
@@ -730,7 +721,6 @@ export function createLbsPage(slug) {
       onSave: (patch) => {
         selectedFids.forEach((fid) => saveEdit(slug, fid, patch));
         if (activePetak && selectedFids.includes(activePetak.fid)) renderPetakPopup();
-        updateEditCount();
         showToast(`${fmtInt(count)} petak berhasil diperbarui`);
       }
     });
@@ -836,48 +826,9 @@ export function createLbsPage(slug) {
       onSave: (patch) => {
         saveEdit(slug, fid, patch);
         renderPetakPopup();
-        updateEditCount();
         showToast('Data berhasil disimpan');
       }
     });
-  }
-
-  function updateEditCount() {
-    const total = countEdits(slug);
-    document.getElementById('edit-count').textContent = total
-      ? `${fmtInt(total)} bidang sudah dilengkapi (tersimpan di browser ini).`
-      : 'Belum ada bidang yang dilengkapi.';
-  }
-
-  async function handleExport() {
-    const button = document.getElementById('export-geojson');
-    if (!geojsonData) {
-      showToast('Poligon belum selesai dimuat.', { error: true });
-      return;
-    }
-
-    button.disabled = true;
-    button.textContent = 'Menyiapkan berkas…';
-    // Beri kesempatan browser repaint sebelum penggabungan data yang berat.
-    await new Promise((resolve) => setTimeout(resolve, 30));
-
-    try {
-      const attrs = await (attrsPromise || Promise.resolve(null));
-      if (!attrs) throw new Error('Atribut lengkap belum tersedia.');
-      const count = exportGeojson({
-        geojson: geojsonData,
-        attrs,
-        edits: loadEdits(slug),
-        fids: exportFids(attrs),
-        fileBase: exportFileBase()
-      });
-      showToast(`GeoJSON ${fmtInt(count)} bidang diunduh — ${exportScopeLabel()}`);
-    } catch (err) {
-      showToast(`Gagal mengekspor: ${err.message}`, { error: true });
-    } finally {
-      button.disabled = false;
-      button.textContent = EXPORT_LABEL;
-    }
   }
 
   map.on('load', () => {
@@ -885,10 +836,8 @@ export function createLbsPage(slug) {
     setupSearch();
     document.querySelector('#kec-filter .chip[data-kec=""]').addEventListener('click', () => setActiveKec(''));
     document.getElementById('panel-error-retry').addEventListener('click', loadStats);
-    document.getElementById('export-geojson').addEventListener('click', handleExport);
     document.getElementById('clear-selection').addEventListener('click', () => selectControl.clearSelection());
     document.getElementById('bulk-edit').addEventListener('click', openBulkEditForm);
-    updateEditCount();
     renderSelectionSummary();
 
     // Tombol di dalam popup dibuat ulang tiap render, jadi listener-nya didelegasikan.
