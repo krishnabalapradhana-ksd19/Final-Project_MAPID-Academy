@@ -23,7 +23,7 @@ import { SelectControl } from './select-tool.js';
 import { ExportControl } from './export-tool.js';
 import { fetchJsonWithTimeout } from '../../shared/fetch-json.js';
 import { screenScaleDenominator } from '../../shared/geo.js';
-import { fmtFileStamp, fmtHa, fmtInt, fmtScale } from '../../shared/format.js';
+import { fmtFileStamp, fmtHa, fmtInt, fmtScale, slugify } from '../../shared/format.js';
 import { regionBy } from '../../shared/regions.js';
 
 const LOGOS = {
@@ -411,7 +411,7 @@ export function createLbsPage(slug) {
 
   const exportControl = new ExportControl({
     loadRows: loadExportRows,
-    fileBaseName: () => `lbs-${slug}-${selectedFids.length ? 'seleksi' : 'semua'}-${fmtFileStamp()}`,
+    fileBaseName: exportFileBase,
     notify: showToast
   });
   map.addControl(exportControl, 'top-left');
@@ -508,6 +508,8 @@ export function createLbsPage(slug) {
       map.setFilter(FILL_LAYER, filter);
       map.setFilter(OUTLINE_LAYER, filter);
     }
+
+    renderSelectionSummary();
 
     if (!stats) return;
     const bbox = kec ? stats.byKecamatan[kec]?.bbox : stats.bbox;
@@ -690,10 +692,10 @@ export function createLbsPage(slug) {
       count,
       text: count ? `${fmtInt(count)} petak terpilih · ${luasText} Ha` : ''
     });
+    const scopeCount = exportScopeCount();
     exportControl.setSourceLabel(
-      count
-        ? `Sumber: ${fmtInt(count)} petak terseleksi.`
-        : `Sumber: seluruh petak${attrsData ? ` (${fmtInt(attrsData.length)})` : ''}. Pilih petak dulu untuk export sebagian.`
+      `Sumber: ${exportScopeLabel()}${scopeCount === null ? '' : ` — ${fmtInt(scopeCount)} petak`}.` +
+        (count ? '' : ' Pilih petak untuk export sebagian.')
     );
   }
 
@@ -734,13 +736,52 @@ export function createLbsPage(slug) {
     });
   }
 
-  /** Atribut petak yang akan diekspor: hasil seleksi, atau seluruh petak bila tidak ada seleksi. */
+  /*
+   * Cakupan export — satu sumber kebenaran untuk export CSV (toolbar) maupun
+   * GeoJSON (panel), berurutan prioritas:
+   *   1. seleksi petak, bila ada,
+   *   2. filter kecamatan yang sedang aktif,
+   *   3. seluruh petak kabupaten/kota.
+   * Dengan begitu berkas hasil export selalu berisi petak yang sama dengan yang
+   * sedang terlihat di peta.
+   */
+  function exportFids(attrs) {
+    if (selectedFids.length) return selectedFids;
+    if (!activeKec) return attrs.map((_, i) => i);
+
+    const fids = [];
+    attrs.forEach((props, fid) => {
+      if (props?.WADMKC === activeKec) fids.push(fid);
+    });
+    return fids;
+  }
+
+  function exportScopeLabel() {
+    if (selectedFids.length) return 'petak terseleksi';
+    return activeKec ? `Kecamatan ${activeKec}` : kabLabel;
+  }
+
+  /** Jumlah petak pada cakupan aktif; null bila datanya belum termuat. */
+  function exportScopeCount() {
+    if (selectedFids.length) return selectedFids.length;
+    if (activeKec) return stats?.byKecamatan[activeKec]?.jumlahBidang ?? null;
+    return attrsData?.length ?? stats?.jumlahBidang ?? null;
+  }
+
+  /**
+   * Nama berkas tanpa ekstensi, dipakai bersama oleh export CSV dan GeoJSON.
+   * Sengaja deklarasi fungsi (bukan const) karena dirujuk saat ExportControl
+   * dibuat di atas — const akan kena temporal dead zone.
+   */
+  function exportFileBase() {
+    const scope = selectedFids.length ? 'seleksi' : activeKec ? slugify(activeKec) : 'semua';
+    return `lbs-${slug}-${scope}-${fmtFileStamp()}`;
+  }
+
   async function loadExportRows() {
     const attrs = await (attrsPromise || Promise.resolve(null));
     if (!attrs) throw new Error('Atribut petak belum tersedia.');
-
-    const fids = selectedFids.length ? selectedFids : attrs.map((_, i) => i);
-    return mergedPropsOf(fids);
+    return mergedPropsOf(exportFids(attrs));
   }
 
   function setupFeaturePopup() {
@@ -823,8 +864,14 @@ export function createLbsPage(slug) {
     try {
       const attrs = await (attrsPromise || Promise.resolve(null));
       if (!attrs) throw new Error('Atribut lengkap belum tersedia.');
-      const count = exportGeojson({ slug, geojson: geojsonData, attrs, edits: loadEdits(slug) });
-      showToast(`GeoJSON ${fmtInt(count)} bidang berhasil diunduh`);
+      const count = exportGeojson({
+        geojson: geojsonData,
+        attrs,
+        edits: loadEdits(slug),
+        fids: exportFids(attrs),
+        fileBase: exportFileBase()
+      });
+      showToast(`GeoJSON ${fmtInt(count)} bidang diunduh — ${exportScopeLabel()}`);
     } catch (err) {
       showToast(`Gagal mengekspor: ${err.message}`, { error: true });
     } finally {
