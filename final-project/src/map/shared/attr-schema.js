@@ -1,15 +1,5 @@
-/**
- * Skema atribut bidang LBS — sumber tunggal untuk:
- *  - label & tipe data tiap field (dipakai popup dan form "Lengkapi Data"),
- *  - deteksi field kosong,
- *  - format tampilan nilai.
- *
- * Kunci atribut mengikuti berkas sumber Kementan. Sebagian kunci bersifat dinamis
- * (mengandung tahun/musim tanam), mis. M1_26_KOMO, MT26_POLA, MT_2026_IP.
- */
 import { fmtNumber } from '../../shared/format.js';
 
-/** Field administratif/geometri: ditampilkan tapi tidak boleh diedit manual. */
 const READ_ONLY = { readOnly: true };
 
 const JENIS_LAHAN = ['Sawah', 'Tegalan', 'Ladang', 'Kebun', 'Lainnya'];
@@ -51,11 +41,6 @@ const nikField = (label) => ({
   validate: (value) => (NIK_PATTERN.test(value) ? null : 'NIK harus 16 digit angka.')
 });
 
-/**
- * `zeroIsBlank`: pada data sumber, seluruh field pupuk/produksi/IP terisi angka 0
- * sebagai placeholder (bukan hasil pengukuran). Nilai 0 karenanya ikut dihitung
- * sebagai "belum diisi" agar bisa dilengkapi lewat form.
- */
 const pupukField = (label) => ({ label, type: 'number', unit: 'kg', min: 0, zeroIsBlank: true });
 
 const STATIC_FIELDS = {
@@ -84,7 +69,6 @@ const STATIC_FIELDS = {
   KETERANGAN: { label: 'Keterangan', type: 'textarea', group: 'RINGKASAN TAHUN' }
 };
 
-/** Field per musim tanam, dipetakan dari akhiran kunci (M1_26_<SUFFIX>). */
 const SEASON_FIELDS = {
   KOMO: { label: 'Komoditas', type: 'select', options: KOMODITAS },
   TNM: { label: 'Tanggal Tanam', type: 'date' },
@@ -100,14 +84,12 @@ const SEASON_FIELDS = {
   PRDK: { label: 'Produksi (kg)', type: 'number', unit: 'kg', min: 0, zeroIsBlank: true }
 };
 
-/** Urutan akhiran field musim tanam saat ditampilkan. */
 export const SEASON_ORDER = Object.keys(SEASON_FIELDS);
 
 const SEASON_KEY = /^M([123])_(\d{2})_(\w+)$/;
 const IP_KEY = /^MT_(\d{4})_IP$/;
 const POLA_KEY = /^MT(\d{2})_POLA$/;
 
-/** Definisi field untuk sebuah kunci atribut; null bila kunci tidak dikelola (mis. Shape_Area). */
 export function fieldDef(key) {
   if (STATIC_FIELDS[key]) return STATIC_FIELDS[key];
 
@@ -128,10 +110,6 @@ export function fieldDef(key) {
   return null;
 }
 
-/**
- * Nilai dianggap kosong bila null/undefined, string kosong, atau strip "-".
- * Untuk field dengan `zeroIsBlank`, angka 0 juga dianggap kosong (lihat catatan di atas).
- */
 export function isBlank(value, def) {
   if (value === null || value === undefined) return true;
   if (typeof value === 'string') {
@@ -142,7 +120,6 @@ export function isBlank(value, def) {
   return false;
 }
 
-/** Teks siap tampil untuk sebuah nilai atribut; mengembalikan null bila kosong. */
 export function displayValue(key, value) {
   const def = fieldDef(key);
   if (isBlank(value, def)) return null;
@@ -152,13 +129,11 @@ export function displayValue(key, value) {
   return String(value);
 }
 
-/** Tahun musim tanam aktif, dibaca dari kunci MT_<tahun>_IP pada data. */
 export function getActiveYear(props) {
   const ipKey = Object.keys(props || {}).find((key) => IP_KEY.test(key));
   return ipKey ? ipKey.match(IP_KEY)[1] : String(new Date().getFullYear());
 }
 
-/** Kunci yang ditampilkan popup pada bagian identitas. */
 export const IDENTITAS_KEYS = [
   'KODE_PETAK',
   'WADMKC',
@@ -174,15 +149,10 @@ export const IDENTITAS_KEYS = [
   'PENYULUH'
 ];
 
-/** Kunci musim tanam yang tersedia pada satu bidang (skema data berbeda antar musim). */
 export function seasonKeys(props, season, yy) {
   return SEASON_ORDER.map((suffix) => `M${season}_${yy}_${suffix}`).filter((key) => key in props);
 }
 
-/**
- * Seluruh kunci yang relevan untuk satu bidang, berurutan seperti tampilan popup.
- * Dipakai bersama oleh popup (penanda kosong) dan form (daftar isian).
- */
 export function petakKeys(props) {
   const year = getActiveYear(props);
   const yy = year.slice(-2);
@@ -198,7 +168,6 @@ export function petakKeys(props) {
   return keys.filter((key, i) => key in props && keys.indexOf(key) === i);
 }
 
-/** Kunci yang kosong dan boleh diisi lewat form. */
 export function blankEditableKeys(props) {
   return petakKeys(props).filter((key) => {
     const def = fieldDef(key);
@@ -206,11 +175,6 @@ export function blankEditableKeys(props) {
   });
 }
 
-/**
- * Kunci untuk pengisian massal: seluruh field yang bisa diedit (terisi maupun kosong),
- * kecuali field yang nilainya unik per bidang (`perFeature`) seperti ID/kode/luas —
- * menyamakan nilai itu ke banyak petak sekaligus hanya akan merusak data.
- */
 export function bulkEditableKeys(propsList) {
   const keys = new Set();
   propsList.forEach((props) => {
@@ -222,10 +186,6 @@ export function bulkEditableKeys(propsList) {
   return [...keys];
 }
 
-/**
- * Placeholder untuk form massal: nilai bersama bila seragam, '(Different values)'
- * bila berbeda-beda, dan string kosong bila semua petak belum terisi.
- */
 export function bulkPlaceholder(key, propsList) {
   const def = fieldDef(key);
   const values = new Set();

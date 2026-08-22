@@ -40,7 +40,11 @@ Dibangun oleh **Alvito Krishna Balapradhana**.
   - **Filter wilayah** by kapanewon/kecamatan (chip filter) yang men-zoom peta ke bounding box wilayah terpilih.
   - **Panel statistik**: total luas (Ha), jumlah bidang, rata-rata luas per bidang, dan persentase terhadap total kabupaten — pra-dihitung saat build, bukan dihitung di browser.
   - **Grafik batang distribusi luas** per kapanewon/kecamatan.
-  - **Popup detail bidang** menampilkan seluruh kolom atribut asli saat sebuah poligon diklik (dimuat lazy, terpisah dari geometri).
+  - **Popup detail bidang** menampilkan seluruh kolom atribut asli saat sebuah poligon diklik (dimuat lazy, terpisah dari geometri). Field yang masih kosong ditandai badge "Belum diisi"; bila ada field kosong, tombol **"Lengkapi Data"** muncul untuk langsung membuka form pengisian bidang tersebut.
+  - **Isi/lengkapi atribut bidang**: pengguna dapat melengkapi field kosong satu bidang langsung dari popup, atau mengisi banyak bidang sekaligus (bulk edit) lewat hasil seleksi. Skema field (label, tipe, validasi, pengelompokan per musim tanam) terpusat di `attr-schema.js`; perubahan disimpan sebagai patch per bidang di **localStorage browser** (per kabupaten/kota) — bersifat prototipe sisi klien, belum tersinkron ke server (lihat [Roadmap](#roadmap--rencana-pengembangan)).
+  - **Widget pilih bidang (seleksi)**: memilih banyak poligon dengan menggambar bebas (lasso) atau kotak (rectangle) di peta. Panel sidebar menampilkan jumlah bidang & total luas terpilih, dengan aksi cepat untuk mengisi atribut massal atau membersihkan seleksi.
+  - **Export data**: mengekspor bidang terpilih, terfilter (kapanewon/kecamatan), atau seluruh kabupaten/kota ke **CSV** (UTF-8 BOM, siap dibuka Excel). Format lain (GeoJSON, KML, Shapefile, GPKG, FGDB) sudah tersedia di menu namun masih berlabel "Segera hadir".
+  - **Notifikasi toast**: umpan balik singkat untuk aksi simpan atribut, ekspor, dan error.
   - **Pencarian kapanewon/kecamatan atau koordinat** (`lat, lon`) lewat kotak cari di topbar.
   - **Widget layer**: toggle isi poligon & garis batas bidang, plus pengatur opasitas.
   - **Widget ukur**: menandai titik (koordinat), mengukur jarak, dan menghitung luas — semua direproyeksikan ke UTM 49S.
@@ -49,6 +53,7 @@ Dibangun oleh **Alvito Krishna Balapradhana**.
   - **Switch basemap**: Google Satellite, OpenStreetMap, Esri Imagery, Esri Topografi.
   - **Toggle proyeksi peta** 2D (Mercator) / Globe (bawaan MapLibre GL).
   - Kontrol peta tambahan: skala bar + skala angka (representative fraction), fullscreen, geolocate ("Lokasi Saya").
+  - Hanya satu widget/alat yang aktif dalam satu waktu — membuka alat baru (ukur, seleksi, print, dsb.) otomatis menutup alat lain yang sedang aktif.
   - Status pemuatan (loading pill) dengan retry manual bila gagal memuat poligon/statistik.
 - **Pemuatan data non-blocking**: poligon GeoJSON besar diparse di **Web Worker** (`geojson-worker.js`) agar UI tidak freeze; statistik dan poligon dimuat paralel, bukan berantai.
 - **Data pipeline build-time**: geojson mentah (~301 MB, seluruh DIY) dipecah jadi file kecil per kabupaten + file statistik pra-hitung, sehingga browser pengunjung tidak pernah mengunduh/parse file mentah.
@@ -100,7 +105,8 @@ Final-Project_MAPID-Academy/
 │       │   ├── regions.js           # Satu sumber data 5 kabupaten/kota (slug, id SVG, WADMKK, nama, link, center, zoom)
 │       │   ├── geo.js               # Proyeksi, skala, konversi Web Mercator/UTM
 │       │   ├── format.js            # Format angka/tanggal locale id-ID
-│       │   └── fetch-json.js        # Fetch JSON dengan timeout (main thread & worker)
+│       │   ├── fetch-json.js        # Fetch JSON dengan timeout (main thread & worker)
+│       │   └── download.js          # Helper unduh Blob generik (dipakai print & export)
 │       ├── assets/                  # Logo kabupaten/kota
 │       ├── mapid-assets/            # Logo MAPID
 │       ├── prov-diy-assets/         # Logo DIY, peta SVG wilayah (diy-wilayah.svg)
@@ -108,8 +114,16 @@ Final-Project_MAPID-Academy/
 │           ├── shared/
 │           │   ├── lbs-page.js      # Factory halaman peta kerja — dipakai oleh kelima kabupaten/kota
 │           │   ├── lbs-page.css     # Tema & layout halaman peta kerja — satu file dipakai bersama
-│           │   ├── map-control.js   # Basis kontrol peta: tombol + dropdown (dipakai semua widget)
+│           │   ├── map-control.js   # Basis kontrol peta: tombol + dropdown (dipakai semua widget, koordinasi 1 alat aktif)
 │           │   ├── feature-popup.js # Popup atribut fitur (escaping + tabel) — dipakai layer LBS & unggahan
+│           │   ├── petak-popup.js   # Popup detail bidang LBS (badge kosong + tombol Lengkapi Data)
+│           │   ├── attr-schema.js   # Skema field atribut LBS: label, tipe, grouping, validasi
+│           │   ├── attr-store.js    # Penyimpanan patch edit atribut di localStorage (per kabupaten/kota)
+│           │   ├── attr-form.js     # Modal form isi/lengkapi atribut (mode satu bidang & bulk edit)
+│           │   ├── select-tool.js   # Widget seleksi bidang: lasso bebas & kotak (rectangle)
+│           │   ├── export-tool.js   # Dropdown ekspor data (mengikuti cakupan seleksi/filter/kabupaten)
+│           │   ├── export-formats.js # Daftar & implementasi encoder format ekspor (CSV aktif; lainnya segera hadir)
+│           │   ├── toast.js         # Notifikasi toast singkat (simpan/ekspor/error)
 │           │   ├── basemaps.js      # Konfigurasi basemap (Google/OSM/Esri)
 │           │   ├── measure-tool.js  # Widget ukur titik/jarak/luas
 │           │   ├── upload-tool.js   # Widget upload GeoJSON/KML/SHP (pratinjau)
@@ -157,13 +171,14 @@ Slug kabupaten yang dipakai di penamaan file: `bantul`, `gunungkidul`, `kulon-pr
 
 ## Roadmap / Rencana Pengembangan
 
-Versi saat ini adalah **static site read-only** — belum ada backend maupun database. Widget layer, ukur, upload, dan print sudah **selesai diimplementasikan** (lihat [Fitur Utama](#fitur-utama)). Sisa rencana pengembangan:
+Versi saat ini adalah **static site** — belum ada backend maupun database. Widget layer, ukur, upload, print, seleksi bidang, ekspor CSV, dan **pengisian/edit atribut (sisi klien)** sudah **selesai diimplementasikan** (lihat [Fitur Utama](#fitur-utama)). Sisa rencana pengembangan:
 
 | Fitur | Deskripsi | Kebutuhan Teknis |
 |---|---|---|
-| **Edit Atribut Fitur** | Popup detail bidang saat ini bersifat **read-only** (lihat `setupFeaturePopup` di `src/map/shared/lbs-page.js`). Rencana pengembangan memungkinkan pengguna mengubah nilai kolom atribut langsung dari popup. | **Membutuhkan backend + database** agar perubahan tersimpan permanen — satu-satunya item roadmap yang keluar dari arsitektur static site saat ini |
+| **Persistensi Edit Atribut ke Server** | Pengisian/edit atribut saat ini (`attr-store.js`) hanya disimpan sebagai patch di **localStorage browser**, per kabupaten/kota — hilang bila cache/data situs dibersihkan dan **tidak tersinkron antar perangkat/pengguna lain**. `attr-store.js` sudah menandai dirinya sebagai prototipe dan menyediakan titik pertukaran (`loadEdits` → `GET /api/lbs/{slug}/edits`, `saveEdit` → `PUT /api/lbs/{slug}/features/{fid}`). | **Membutuhkan backend + database** agar perubahan tersimpan permanen dan konsisten untuk semua pengguna |
+| **Format Ekspor Tambahan** | Menu ekspor (`export-formats.js`) sudah menyediakan pilihan GeoJSON, KML, Shapefile, GPKG, dan FGDB, namun saat ini dinonaktifkan (`enabled: false`) — hanya **CSV** yang aktif. | Implementasi encoder masing-masing format di `export-formats.js` |
 
-> Item di atas **belum diimplementasikan** di kode saat ini.
+> Kedua item di atas **belum diimplementasikan** di kode saat ini.
 
 ---
 

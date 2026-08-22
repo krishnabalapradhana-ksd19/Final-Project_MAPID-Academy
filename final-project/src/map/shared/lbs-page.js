@@ -166,9 +166,7 @@ export function createLbsPage(slug) {
   let attrsPromise = null;
   let activeKec = '';
   let attrsData = null;
-  /** Konteks popup yang sedang terbuka — dipakai untuk refresh setelah data disimpan. */
   let activePetak = null;
-  /** _fid petak hasil seleksi lasso/kotak. */
   let selectedFids = [];
 
   document.getElementById('app').innerHTML = `
@@ -625,7 +623,6 @@ export function createLbsPage(slug) {
       });
   }
 
-  /** Layer sorotan petak terseleksi — difilter berdasarkan daftar _fid. */
   function addSelectionLayers() {
     map.addLayer({
       id: SELECTED_FILL_LAYER,
@@ -658,7 +655,6 @@ export function createLbsPage(slug) {
     renderSelectionSummary();
   }
 
-  /** Luas total seleksi (Ha) — dihitung dari luas geometri seperti kartu statistik. */
   function selectedLuasHa() {
     if (!attrsData) return null;
     return selectedFids.reduce((total, fid) => {
@@ -668,7 +664,6 @@ export function createLbsPage(slug) {
     }, 0);
   }
 
-  /** Satu sumber teks ringkasan untuk panel, menu seleksi, dan menu export. */
   function renderSelectionSummary() {
     const count = selectedFids.length;
     const luasHa = selectedLuasHa();
@@ -690,16 +685,10 @@ export function createLbsPage(slug) {
     );
   }
 
-  /** Atribut terkini (asli + hasil edit) untuk sekumpulan _fid. */
   function mergedPropsOf(fids) {
     return fids.filter((fid) => attrsData?.[fid]).map((fid) => mergeProps(attrsData[fid], getEdit(slug, fid)));
   }
 
-  /**
-   * Form isian massal: memakai komponen form yang sama dengan "Lengkapi Data",
-   * hanya daftar field dan placeholder-nya yang berbeda. Field yang dibiarkan
-   * kosong tidak ikut dikirim, jadi nilai lama tiap petak tetap utuh.
-   */
   function openBulkEditForm() {
     if (!selectedFids.length) return;
     if (!attrsData) {
@@ -726,15 +715,6 @@ export function createLbsPage(slug) {
     });
   }
 
-  /*
-   * Cakupan export — satu sumber kebenaran untuk export CSV (toolbar) maupun
-   * GeoJSON (panel), berurutan prioritas:
-   *   1. seleksi petak, bila ada,
-   *   2. filter kecamatan yang sedang aktif,
-   *   3. seluruh petak kabupaten/kota.
-   * Dengan begitu berkas hasil export selalu berisi petak yang sama dengan yang
-   * sedang terlihat di peta.
-   */
   function exportFids(attrs) {
     if (selectedFids.length) return selectedFids;
     if (!activeKec) return attrs.map((_, i) => i);
@@ -751,18 +731,12 @@ export function createLbsPage(slug) {
     return activeKec ? `Kecamatan ${activeKec}` : kabLabel;
   }
 
-  /** Jumlah petak pada cakupan aktif; null bila datanya belum termuat. */
   function exportScopeCount() {
     if (selectedFids.length) return selectedFids.length;
     if (activeKec) return stats?.byKecamatan[activeKec]?.jumlahBidang ?? null;
     return attrsData?.length ?? stats?.jumlahBidang ?? null;
   }
 
-  /**
-   * Nama berkas tanpa ekstensi, dipakai bersama oleh export CSV dan GeoJSON.
-   * Sengaja deklarasi fungsi (bukan const) karena dirujuk saat ExportControl
-   * dibuat di atas — const akan kena temporal dead zone.
-   */
   function exportFileBase() {
     const scope = selectedFids.length ? 'seleksi' : activeKec ? slugify(activeKec) : 'semua';
     return `lbs-${slug}-${scope}-${fmtFileStamp()}`;
@@ -801,14 +775,12 @@ export function createLbsPage(slug) {
           return;
         }
 
-        // Atribut asli di-override oleh hasil edit yang tersimpan (localStorage).
         activePetak = { fid, base, popup, lngLat: e.lngLat };
         renderPetakPopup();
       }
     });
   }
 
-  /** Render ulang popup bidang aktif memakai atribut terbaru (asli + hasil edit). */
   function renderPetakPopup() {
     const { fid, base, popup, lngLat } = activePetak;
     if (!popup.isOpen()) return;
@@ -840,7 +812,6 @@ export function createLbsPage(slug) {
     document.getElementById('bulk-edit').addEventListener('click', openBulkEditForm);
     renderSelectionSummary();
 
-    // Tombol di dalam popup dibuat ulang tiap render, jadi listener-nya didelegasikan.
     document.addEventListener('click', (e) => {
       if (e.target.closest('.attr-edit-btn')) openEditForm();
     });

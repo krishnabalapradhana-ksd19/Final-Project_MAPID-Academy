@@ -1,16 +1,7 @@
-/**
- * Modal isian atribut bidang. Dipakai untuk dua alur:
- *  - "Lengkapi Data": satu petak, hanya field yang masih kosong,
- *  - "Isi Atribut" massal: banyak petak sekaligus, seluruh field yang bisa diedit
- *    dengan placeholder nilai bersama / "(Different values)".
- * Perbedaannya hanya pada daftar `keys`, `placeholders`, dan teks tombol — struktur
- * form, validasi, dan pengumpulan nilainya sama persis.
- */
 import { escapeHtml } from './feature-popup.js';
 import { fieldDef } from './attr-schema.js';
 import { closeActiveControl } from './map-control.js';
 
-/** Satu overlay dipakai ulang untuk seluruh popup/bidang. */
 let overlay = null;
 let activeForm = null;
 
@@ -23,7 +14,6 @@ function inputHtml(key, def, placeholder) {
     const options = def.options
       .map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`)
       .join('');
-    // Select tidak punya placeholder, jadi teksnya dititipkan pada opsi kosong.
     const empty = escapeHtml(placeholder || '— pilih —');
     return `<select ${common}><option value="">${empty}</option>${options}</select>`;
   }
@@ -65,7 +55,6 @@ function fieldsHtml(keys, placeholders) {
     .join('');
 }
 
-/** Baca satu input: { empty } bila dibiarkan kosong, { error } bila tidak valid. */
 function readField(key, input) {
   const def = fieldDef(key);
   const raw = String(input.value).trim();
@@ -176,16 +165,6 @@ export function closeAttrForm() {
   activeForm = null;
 }
 
-/**
- * Buka form isian atribut.
- * @param {object} options
- * @param {string} [options.title] judul dialog
- * @param {string} options.subtitle keterangan sasaran (nama petak / jumlah petak)
- * @param {string[]} options.keys kunci atribut yang ditampilkan
- * @param {Record<string, string>} [options.placeholders] teks placeholder per kunci
- * @param {string} [options.submitLabel] teks tombol simpan
- * @param {(patch: object) => void} options.onSave menerima hanya field yang diisi
- */
 export function openAttrForm({
   title = 'Lengkapi Data',
   subtitle,
@@ -195,7 +174,6 @@ export function openAttrForm({
   onSave
 }) {
   ensureOverlay();
-  // Dialog dan tool peta tidak boleh aktif bersamaan.
   closeActiveControl();
   activeForm = { onSave };
 

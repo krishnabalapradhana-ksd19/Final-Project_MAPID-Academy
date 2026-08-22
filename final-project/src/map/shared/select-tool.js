@@ -1,18 +1,3 @@
-/**
- * Alat seleksi petak: gambar lasso bebas atau kotak di atas peta untuk memilih
- * beberapa poligon LBS sekaligus.
- *
- * Pendekatan (sengaja sederhana, tanpa dependency baru):
- *  - kandidat diambil lewat map.queryRenderedFeatures() memakai bounding box
- *    bentuk yang digambar — MapLibre yang mengerjakan uji perpotongan,
- *  - untuk lasso, kandidat disaring lagi dengan uji titik-dalam-poligon di ruang
- *    layar (ray casting) memakai simpul + centroid tiap petak,
- *  - hasil di-dedupe berdasarkan _fid karena queryRenderedFeatures mengembalikan
- *    potongan per-tile untuk poligon yang melintasi batas tile.
- *
- * Mode gambar dan hasil seleksi sengaja dipisah: menutup tool hanya mematikan
- * mode gambar, seleksinya tetap hidup supaya bisa dipakai untuk edit massal.
- */
 import { DropdownControl } from './map-control.js';
 
 const SOURCE_ID = 'select-tool-src';
@@ -23,7 +8,6 @@ const LAYERS = [FILL_LAYER, LINE_LAYER];
 const COLOR = '#2563eb';
 const EMPTY = { type: 'FeatureCollection', features: [] };
 
-/** Jarak minimal antar titik lasso (px) supaya jejak tidak terlalu rapat. */
 const LASSO_MIN_STEP_PX = 4;
 
 const ICON = `
@@ -37,7 +21,6 @@ const MODE_HINTS = {
   rect: 'Tahan tombol kiri mouse lalu tarik membentuk kotak.'
 };
 
-/** Uji titik di dalam poligon (ray casting) — semua koordinat dalam piksel layar. */
 function pointInPolygon([x, y], ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -48,7 +31,6 @@ function pointInPolygon([x, y], ring) {
   return inside;
 }
 
-/** Semua pasangan [lng, lat] pada geometri, tanpa peduli kedalaman array. */
 function flattenCoords(coords, out = []) {
   if (typeof coords[0] === 'number') out.push(coords);
   else coords.forEach((child) => flattenCoords(child, out));
@@ -61,12 +43,6 @@ const boundsOf = (points) => [
 ];
 
 export class SelectControl extends DropdownControl {
-  /**
-   * @param {object} options
-   * @param {string} options.layerId layer poligon yang bisa diseleksi
-   * @param {(fids: number[]) => void} options.onChange dipanggil tiap seleksi berubah
-   * @param {() => void} options.onEdit dipanggil saat tombol isi atribut massal ditekan
-   */
   constructor({ layerId, onChange, onEdit }) {
     super({ icon: ICON, title: 'Pilih Petak', ariaLabel: 'Pilih petak dengan lasso atau kotak', label: 'Pilih Petak' });
     this._layerId = layerId;
@@ -130,12 +106,10 @@ export class SelectControl extends DropdownControl {
     super.onRemove();
   }
 
-  /** Menutup tool hanya mematikan mode gambar; hasil seleksi sengaja dipertahankan. */
   onClose() {
     this._exitMode();
   }
 
-  /** Ringkasan seleksi di dalam menu; ikut mengatur tampil/tidaknya tombol edit massal. */
   setSelectionInfo({ count, text }) {
     if (!this._summaryEl) return;
     this._summaryEl.hidden = !text;
@@ -144,13 +118,11 @@ export class SelectControl extends DropdownControl {
     this._editBtn.textContent = `Isi Atribut (${count})`;
   }
 
-  /** Hapus bentuk gambar sekaligus hasil seleksi. */
   clearSelection() {
     this._clearShape();
     this._onChange([]);
   }
 
-  /** Escape: batalkan seleksi dan keluar dari tool. */
   deactivate() {
     this.clearSelection();
     this.close();
@@ -171,7 +143,6 @@ export class SelectControl extends DropdownControl {
 
     this._ensureLayers();
 
-    // Pan & box-zoom bawaan dimatikan supaya drag dipakai untuk menggambar.
     this._map.dragPan.disable();
     this._map.boxZoom.disable();
     this._map.getCanvas().style.cursor = 'crosshair';
@@ -179,7 +150,6 @@ export class SelectControl extends DropdownControl {
     this._map.on('mousedown', this._onMouseDown);
   }
 
-  /** Keluar dari mode gambar dan kembalikan interaksi peta seperti semula. */
   _exitMode() {
     if (!this._mode) return;
     this._mode = null;
@@ -199,7 +169,6 @@ export class SelectControl extends DropdownControl {
     this._map.off('mouseup', this._onMouseUp);
   }
 
-  /** Layer dibuat/dinaikkan saat dipakai agar selalu berada di atas layer LBS. */
   _ensureLayers() {
     const map = this._map;
     if (map.getLayer(FILL_LAYER)) {
@@ -255,7 +224,6 @@ export class SelectControl extends DropdownControl {
     this._onChange(this._queryFids());
   }
 
-  /** Titik-titik layar bentuk aktif; kotak dijabarkan jadi 4 sudut. */
   _shapePoints() {
     if (this._mode !== 'rect') return this._points;
     if (this._points.length < 2) return [];
@@ -305,7 +273,6 @@ export class SelectControl extends DropdownControl {
     candidates.forEach((feature) => {
       const fid = feature.properties?._fid;
       if (fid === undefined || fids.has(fid)) return;
-      // Kotak sudah presisi dari queryRenderedFeatures; lasso perlu saringan tambahan.
       if (this._mode === 'rect' || this._hitsLasso(feature, points)) fids.add(fid);
     });
 
@@ -324,7 +291,6 @@ export class SelectControl extends DropdownControl {
       sumY += y;
     }
 
-    // Lasso kecil yang seluruhnya berada di dalam satu petak besar.
     return coords.length > 0 && pointInPolygon([sumX / coords.length, sumY / coords.length], ring);
   }
 }

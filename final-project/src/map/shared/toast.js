@@ -2,7 +2,6 @@ const VISIBLE_MS = 2600;
 
 let container = null;
 
-/** Notifikasi singkat di pojok bawah peta. */
 export function showToast(message, { error = false } = {}) {
   if (!container) {
     container = document.createElement('div');

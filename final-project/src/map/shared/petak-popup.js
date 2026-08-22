@@ -13,7 +13,6 @@ const fmtDateShort = (date) =>
     .map((part, i) => (i < 2 ? String(part).padStart(2, '0') : part))
     .join('/');
 
-/** Penanda visual untuk field yang belum terisi. */
 const EMPTY_MARK =
   '<span class="petak-popup-blank" title="Data belum diisi">' +
   '<span class="petak-popup-warn" aria-hidden="true">!</span>Belum diisi</span>';
@@ -35,7 +34,6 @@ function identityRow(label, value) {
   `;
 }
 
-/** Baris label+nilai untuk satu kunci atribut, label diambil dari skema. */
 function fieldRow(props, key) {
   return identityRow(fieldDef(key)?.label || key, valueHtml(props, key));
 }
@@ -98,7 +96,6 @@ function buildRingkasan(props, activeYear) {
   `;
 }
 
-/** Tombol pembuka form; hanya muncul bila masih ada field kosong yang bisa diisi. */
 function buildEditButton(props, fid) {
   const blanks = blankEditableKeys(props);
   if (!blanks.length || fid === undefined || fid === null) return '';

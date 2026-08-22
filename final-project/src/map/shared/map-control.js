@@ -14,14 +14,8 @@ export function controlButton({ icon, title, ariaLabel, onClick }) {
   return button;
 }
 
-/**
- * Satu-satunya sumber kebenaran "tool mana yang sedang aktif" di toolbar peta.
- * Hanya satu control boleh terbuka; membuka yang lain otomatis menutup yang lama,
- * dan tiap control membereskan state-nya sendiri lewat hook onClose().
- */
 let activeControl = null;
 
-/** Tutup tool yang sedang aktif (dipakai juga saat dialog modal dibuka). */
 export function closeActiveControl() {
   if (activeControl) activeControl.close();
 }
@@ -76,7 +70,6 @@ export class DropdownControl {
 
   open() {
     if (this.isOpen()) return;
-    // Membuka tool baru selalu mematikan tool sebelumnya.
     if (activeControl && activeControl !== this) activeControl.close();
     activeControl = this;
     this._container.classList.add('open');
@@ -90,13 +83,11 @@ export class DropdownControl {
     this.onClose();
   }
 
-  /** Klik ulang pada tool yang sedang aktif akan mematikannya. */
   toggle() {
     if (this.isOpen()) this.close();
     else this.open();
   }
 
-  /** Cegah menu tertutup oleh klik di luar (mis. saat sedang menggambar). */
   keepOpen() {
     return false;
   }
@@ -105,6 +96,5 @@ export class DropdownControl {
 
   onOpen() {}
 
-  /** Tempat tiap control membereskan mode/listener-nya saat tool dimatikan. */
   onClose() {}
 }

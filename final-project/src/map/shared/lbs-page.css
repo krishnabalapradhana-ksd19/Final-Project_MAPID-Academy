@@ -271,23 +271,12 @@ body {
   box-shadow: 0 4px 16px rgba(11, 11, 11, 0.16);
 }
 
-/*
- * MapLibre memaksa SEMUA button di dalam .maplibregl-ctrl-group jadi kotak ikon
- * 29x29 px tanpa padding (`.maplibregl-ctrl-group button`, spesifisitas 0,1,1).
- * Aturan itu ikut mengenai tombol di dalam menu dropdown sehingga labelnya
- * meluber dan saling menimpa. Reset di bawah spesifisitasnya 0,2,1 agar menang.
- */
 .map-dropdown .dropdown-menu button {
   width: auto;
   height: auto;
   border-top: 0;
 }
 
-/*
- * MapLibre juga menetapkan `display:block` pada tombol-tombol itu. Deklarasi
- * author mana pun mengalahkan aturan `[hidden]` bawaan browser, sehingga atribut
- * `hidden` pada tombol di dalam menu tidak berefek tanpa penegasan berikut.
- */
 .map-dropdown .dropdown-menu button[hidden] {
   display: none;
 }
@@ -340,7 +329,6 @@ body {
   gap: 2px;
 }
 
-/* Diberi awalan .dropdown-menu supaya padding-nya menang atas reset MapLibre. */
 .dropdown-menu .dropdown-option {
   width: 100%;
   border: 0;

@@ -1,23 +1,9 @@
-/**
- * Daftar format export data petak + implementasinya.
- *
- * Satu-satunya sumber kebenaran untuk menu Export: UI di export-tool.js hanya
- * melakukan loop atas EXPORT_FORMATS, jadi menambah/mengaktifkan format cukup
- * disentuh di berkas ini.
- *
- * CARA MENGAKTIFKAN FORMAT BARU:
- *   1. tulis handler-nya: (rows, baseName) => void
- *   2. pasang di entri format terkait: enabled: true, run: handlerBaru
- * Tombol otomatis hidup di UI, tidak ada markup yang perlu diubah.
- */
 import { downloadBlob } from '../../shared/download.js';
 
-/** Excel di Windows butuh BOM agar UTF-8 (nama desa, dsb) tidak jadi mojibake. */
-const BOM = '\uFEFF';
+const BOM = '﻿';
 const SEPARATOR = ',';
 const NEWLINE = '\r\n';
 
-/** Kolom = gabungan seluruh kunci pada baris, urut sesuai kemunculan pertama. */
 function collectColumns(rows) {
   const columns = [];
   const seen = new Set();
@@ -49,10 +35,6 @@ function exportCsv(rows, baseName) {
   downloadBlob(blob, `${baseName}.csv`);
 }
 
-/**
- * `enabled: false` = tombol tetap tampil tapi non-aktif (belum diimplementasikan).
- * Konversi Shapefile/FGDB/KML/GPKG butuh dependency berat, jadi sengaja ditunda.
- */
 export const EXPORT_FORMATS = [
   { key: 'csv', label: 'Export to CSV', enabled: true, run: exportCsv },
   { key: 'json', label: 'Export to JSON', enabled: false },
