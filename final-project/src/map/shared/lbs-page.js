@@ -411,7 +411,7 @@ export function createLbsPage(slug) {
       getDefaults: () => ({
         title: `Peta Kerja Lahan Baku Sawah ${activeKec ? `Kecamatan ${activeKec}` : kabLabel}`,
         subtitle: `${activeKec ? `${activeKec}, ` : ''}${kabLabel}, D.I. Yogyakarta — Tahun 2025`,
-        source: 'Kementerian Pertanian RI — Lahan Baku Sawah (LBS) 2025',
+        source: 'Kementerian Pertanian RI — Lahan Baku Sawah (LBS) 2019',
         agency: `Pemerintah ${kabLabel}`,
         logo,
         paper: 'A4',
